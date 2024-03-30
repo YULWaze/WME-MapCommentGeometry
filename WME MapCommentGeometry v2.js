@@ -20,7 +20,7 @@
 /* eslint curly: ["warn", "multi-or-nest"] */
 
 // Hacked together by YUL_ based on WME Street to River and WME Wazer Creater
-// de         https://*.waze.com/*editor*
+// Thanks to MapOMatic for fixing WME Wazer Creater
 
 // Instructions
 // 1) install this script as greasemonkey script or chrome extension
