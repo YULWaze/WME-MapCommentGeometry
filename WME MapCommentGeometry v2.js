@@ -23,7 +23,7 @@
 // Thanks to MapOMatic for fixing WME Wazer Creater
 
 // Instructions
-// 1) install this script as greasemonkey script or chrome extension
+// 1) install this script in TamperMonkey
 // 2) select a road in WME
 // 3) click the "Make Map Comment" button at the bottom of the left pane
 // 4) create a new Map Comment area or select an existing one
