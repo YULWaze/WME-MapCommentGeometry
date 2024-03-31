@@ -23,12 +23,13 @@
 
 // Hacked together by YUL_ based on WME Street to River and WME Wazer Creater
 // Thanks to MapOMatic for fixing WME Wazer Creater
+// Thanks to DeviateFromThePlan for cleaning up the code
 
 // Instructions
 // 1) install this script in TamperMonkey
 // 2) select a road in WME
-// 3) click the "Make Map Comment" button at the bottom of the left pane
-// 4) create a new Map Comment area or select an existing one
+// 3) click the "Use for MC" button at the bottom of the left pane
+// 4) create a new Map Comment or select an existing one
 // 5) click the "Map Comment on Road" button on the left pane
 
 /*
@@ -42,6 +43,8 @@ It could be interesting to simplify the map comment geometry accordingly.
 See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 - Allow this script to place a map comment on multiple selected segments
+
+- Feedback:
 
 */
 
@@ -60,14 +63,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	const CommentWidths = [15,20,40,15,15,30,30];
 	const DefaultCommentWidth = 15;
 
-    function addButtons() {
+    function addWMEMCbutton() {
         if (WazeWrap.hasMapCommentSelected()) {
             let mapComment = WazeWrap.getSelectedFeatures()[0];
             const lockRegion = $('.lock-edit-region');
 
-            const regionDiv = $('<div class="wazer-creater-region"/>');
+            const regionDiv = $('<div class="WME-MC-region"/>');
             const mainDiv = $('<div class="form-group"/>');
-            mainDiv.append($('<label class="wazer-creater-label control-label">WME MapCommentGeometry</label>'));
+            mainDiv.append($('<label class="WME-MC-label control-label">WME MapCommentGeometry</label>'));
             const controlsDiv = $('<div class="controls"/>');
             controlsDiv.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Map Comment on Road</button></div>'));
 
@@ -108,7 +111,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         }
     }
 
-
 	function WMEMapCommentGeometry_bootstrap() {
 	   var wazeapi = W || window.W;
 	   if(!wazeapi || !wazeapi.map || !WazeWrap.Interface) {
@@ -116,14 +118,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		  return;
 	   }
 
-		/* begin running the code! */
 		WMEMapCommentGeometry_init();
-		//setTimeout(WMEMapCommentGeometry_init,3000);
-		//window.setTimeout(WMEMapCommentGeometry_init,500);
 	}
 
-
-// 2014-01-09: Add new controls to Waze Editors.
 	function WMEMapCommentGeometry_init() {
 
         try {
@@ -134,12 +131,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			console.log(ex.message);
 		}
 
-	//    var scriptLanguage = "us";
 		var langText;
 
-		function insertButtons() {
+		function addWMESelectSegmentbutton() {
 
-	// 2024-03-29 from WME UR-MP tracking
+// 2024-03-29 from WME UR-MP tracking
 			const f = W.selectionManager.getSelectedFeatures()
 
 			if (f.length === 0) {
@@ -219,16 +215,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				displacement = DefaultCommentWidth;
 			}
 			var streetVertices = sel.geometry.getVertices();
-//			var firstPolyPoint = null;
-//			var secondPolyPoint = null;
 
 			var firstStreetVerticeOutside = 0;
-
-	//        var wazeActionUpdateFeatureGeometry = require("Waze/Action/UpdateFeatureGeometry");
-	//        var wazefeatureVectorLandmark = require("Waze/Feature/Vector/Landmark");
-	//        var wazeActionAddLandmark = require("Waze/Action/AddLandmark");
-	//        var wazeActionDeleteSegment = require("Waze/Action/DeleteSegment");
-
 
 			// 2013-10-13: Add to polyPoints polygon
 			console.log("WME Map Comment polygon: Create");
@@ -268,15 +256,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 						if(i>=firstStreetVerticeOutside) {
 							polyPoints.unshift(li);
 							polyPoints.push(ri);
-
-							// 2013-10-17: Is first point outside river? -> Save it for later use
-/*
-							if(i==firstStreetVerticeOutside) {
-								firstPolyPoint = li.clone();
-								secondPolyPoint = ri.clone();
-								polyPoints = [li,ri];
-							}
-*/
 						}
 					}
 
@@ -285,15 +264,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 						if(i>=firstStreetVerticeOutside) {
 							polyPoints.unshift(leftPb.clone());
 							polyPoints.push(rightPb.clone());
-
-							// 2013-10-17: Is first point outside river? -> Save it for later use
-/*
-							if(i==firstStreetVerticeOutside) {
-								firstPolyPoint = leftPb.clone();
-								secondPolyPoint = rightPb.clone();
-								polyPoints = [leftPb,rightPb];
-							}
-*/
 						}
 					}
 				}
@@ -380,23 +350,19 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		function intLanguageStrings() {
 			switch(getLanguage()) {
 				default:		// 2014-06-05: English
-					langText = new Array("Select a road and click this button.","Make Map Comment");
+					langText = new Array("Select a road and click this button.","Use for MC");
 			}
 		}
 
-		// 2014-06-05: Returns the translated  string to current language, if the language is not recognized assumes English
+		// 2014-06-05: Returns the translated string to current language, if the language is not recognized assumes English
 		function getString(stringID) {
 			return langText[stringID];
 		}
 
-		// 2014-06-05: Get interface language
-	//    scriptLanguage = getLanguage();
 		intLanguageStrings();
 
-		W.selectionManager.events.register("selectionchanged", null, insertButtons);
-
-		W.selectionManager.events.register("selectionchanged", null, addButtons);
-
+		W.selectionManager.events.register("selectionchanged", null, addWMESelectSegmentbutton);
+		W.selectionManager.events.register("selectionchanged", null, addWMEMCbutton);
 	}
 
 WMEMapCommentGeometry_bootstrap();
