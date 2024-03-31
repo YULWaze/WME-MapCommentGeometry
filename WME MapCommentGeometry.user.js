@@ -400,6 +400,5 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 WMEMapCommentGeometry_bootstrap();
-setTimeout(WMEMapCommentGeometry_bootstrap, 3000);
 
 })();
