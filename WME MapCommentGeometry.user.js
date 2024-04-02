@@ -9,7 +9,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.03.31.01
+// @version 		2024.04.01.01
 // ==/UserScript==
 
 /* global W */
@@ -26,7 +26,7 @@
 // Thanks to DeviateFromThePlan for cleaning up the code
 
 // Instructions
-// 1) install this script in TamperMonkey
+// 1) install this script in Tampermonkey
 // 2) select a road in WME
 // 3) click the "Use for MC" button at the bottom of the left pane
 // 4) create a new Map Comment or select an existing one
@@ -48,9 +48,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 */
 
-
 (function() {
-    const UPDATE_NOTES = 'General code refactor';
+    const UPDATE_NOTES = 'Added dropdown for comment width';
 	const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
@@ -60,8 +59,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 	// Default widths of the Map Comment around the existing road depending on road type
 	// sel.attributes.roadType: 1 = Street, 2 = PS, 3 = Freeway, 4 = Ramp, 6 = MH, 7 = mH, 8 = Offroad, 17 = Private, 20 = Parking lot
-	const CommentWidths = [15,20,40,15,15,30,30];
-	const DefaultCommentWidth = 15;
+//	const CommentWidths = [15,20,40,15,15,30,30];
+	const DefaultCommentWidth = 10;
+
+	let TheCommentWidth;
 
     function addWMEMCbutton() {
         if (WazeWrap.hasMapCommentSelected()) {
@@ -152,8 +153,25 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			var btn1 = $('<button class="btn btn-primary" title="' + getString(idTitle) + '">' + getString(idMapCommentGeo) + '</button>');
 			btn1.click(doMapComment);
 
+			// Add dropdown for comment width
+			var selCommentWidth = $('<select id="CommentWidth" data-type="numeric" class="form-control" />');
+			selCommentWidth.append( $('<option value="5">5</option>') );
+			selCommentWidth.append( $('<option value="10">10</option>') );
+			selCommentWidth.append( $('<option value="15">15</option>') );
+			selCommentWidth.append( $('<option value="20">20</option>') );
+			selCommentWidth.append( $('<option value="25">25</option>') );
+
 			// Add MapCommentGeo section
 			var cnt = $('<section id="MapCommentGeo" />');
+
+			// Add comment width to section
+			var divGroup1 = $('<div class="form-group" />');
+			divGroup1.append( $('<label class="col-xs-4">Width:</label>') );
+			var divControls1 = $('<div class="col-xs-8 controls" />');
+			divControls1.append(selCommentWidth);
+//			divControls1.append(chk);
+			divGroup1.append(divControls1);
+			cnt.append(divGroup1);
 
 			// Add button
 			var divGroup2 = $('<div class="form-group"/>');
@@ -165,6 +183,19 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 			$("#segment-edit-general").append(cnt);
 
+			// Select last comment width
+			var lastCommentWidth = getLastCommentWidth(DefaultCommentWidth);
+			console.log("Last comment width: " + lastCommentWidth);
+			selCommentWidth = document.getElementById('CommentWidth');
+			if(selCommentWidth!==null){
+				for(var i=0; i < selCommentWidth.options.length; i++){
+					if(selCommentWidth.options[i].value == lastCommentWidth){
+						selCommentWidth.selectedIndex = i;
+						break;
+					}
+				}
+			}
+
             WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_NOTES, '');
 
 			console.log("WME MapCommentGeometry");
@@ -175,6 +206,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		function doMapComment(ev) {
 			var convertOK;
 			var foundSelectedSegment = false;
+
+			// 2013-10-20: Get comment width
+			var selCommentWidth = document.getElementById('CommentWidth');
+			TheCommentWidth = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value);
+
+			setlastCommentWidth(TheCommentWidth);
+
+			console.log("Comment width: " + TheCommentWidth);
 
 			// Search for helper road. If found create or expand a Map Comment
 
@@ -204,16 +243,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			var prevLeftEq, prevRightEq;
 			var street = getStreet(sel);
 
-			var displacement;
-
-			if (sel.attributes.roadType > 0 && sel.attributes.roadType < 8)
-			{
-				displacement = CommentWidths[sel.attributes.roadType-1];
-			}
-			else
-			{
-				displacement = DefaultCommentWidth;
-			}
 			var streetVertices = sel.geometry.getVertices();
 
 			var firstStreetVerticeOutside = 0;
@@ -228,7 +257,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			{
 				var pa = streetVertices[i];
 				var pb = streetVertices[i+1];
-				var scale = (pa.distanceTo(pb) + displacement) / pa.distanceTo(pb);
+				var scale = (pa.distanceTo(pb) + TheCommentWidth) / pa.distanceTo(pb);
 
 				leftPa = pa.clone();
 				leftPa.resize(scale, pb, 1);
@@ -252,7 +281,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 					var li = intersectX(leftEq, prevLeftEq);
 					var ri = intersectX(rightEq, prevRightEq);
 					if (li && ri) {
-						// 2013-10-17: Is point outside river?
+						// 2013-10-17: Is point outside comment?
 						if(i>=firstStreetVerticeOutside) {
 							polyPoints.unshift(li);
 							polyPoints.push(ri);
@@ -260,7 +289,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 					}
 
 					else {
-						// 2013-10-17: Is point outside river?
+						// 2013-10-17: Is point outside comment?
 						if(i>=firstStreetVerticeOutside) {
 							polyPoints.unshift(leftPb.clone());
 							polyPoints.push(rightPb.clone());
@@ -284,7 +313,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			polyPoints.push(leftPb);
 
 			// YUL_: Add the first point at the end of the array to close the shape!
-			// YUL_: When creating a river or other polygon, WME will automatically do this, but since we are modifying an existing Map Comment, we must do it here!
+			// YUL_: When creating a comment or other polygon, WME will automatically do this, but since we are modifying an existing Map Comment, we must do it here!
 			polyPoints.push(polyPoints[0]);
 
 			// YUL_: At this point we have the shape we need, and have to convert the existing map comment into that shape.
@@ -331,6 +360,32 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			}
 			var street = segment.model.streets.get(segment.attributes.primaryStreetID);
 			return street;
+		}
+
+		// 2013-06-09: Save current comment Width
+		function setlastCommentWidth(CommentWidth){
+			if(typeof(Storage)!=="undefined"){
+				// 2013-06-09: Yes! localStorage and sessionStorage support!
+				sessionStorage.CommentWidth=Number(CommentWidth);
+			 }
+			 else{
+			   // Sorry! No web storage support..
+			   console.log("No web storage support");
+			 }
+		}
+
+		// 2013-06-09: Returns last saved comment width
+		function getLastCommentWidth(CommentWidth){
+			if(typeof(Storage)!=="undefined"){
+				// 2013-06-09: Yes! localStorage and sessionStorage support!
+				if(sessionStorage.CommentWidth)
+					return Number(sessionStorage.CommentWidth);
+				else
+					return Number(CommentWidth);	// Default comment width
+			 }
+			 else{
+			   return Number(CommentWidth);	// Default comment width
+			 }
 		}
 
 		// 2014-06-05: Returns WME interface language
