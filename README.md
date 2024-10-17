@@ -1,6 +1,6 @@
 # <p align="center">WME MapCommentGeometry</p>
 
-This script creates a map comment around a single selected road segment.
+This script creates a note around a single selected road segment. It also allows you to create a camera-shaped note.
 
 ## Instructions
 1) Install this script in Tampermonkey.
