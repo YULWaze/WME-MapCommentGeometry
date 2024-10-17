@@ -72,7 +72,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	var polyPoints = null;
 	let prevLeftEq;
 	let prevRightEq;
-
+	let center;
+	
 	// Default widths of the Map Comment around the existing road depending on road type
 	// sel.attributes.roadType: 1 = Street, 2 = PS, 3 = Freeway, 4 = Ramp, 6 = MH, 7 = mH, 8 = Offroad, 17 = Private, 20 = Parking lot
 //	const CommentWidths = [15,20,40,15,15,30,30];
