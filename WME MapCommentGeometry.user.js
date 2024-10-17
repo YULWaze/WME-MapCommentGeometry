@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name 			WME MapCommentGeometry
 // @author			YUL_
-// @description 	This script creates a map comment around a single selected road segment.
-// @match      		*://*.waze.com/*editor*
-// @exclude    		*://*.waze.com/user/editor*
+// @description 	This script creates a map note around a single selected road segment. It also allows you to create a camera-shaped note. 
+// @match	  		*://*.waze.com/*editor*
+// @exclude			*://*.waze.com/user/editor*
 // @grant 			none
-// @require      	https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require	  	https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.04.01.01
+// @version 		2024.10.16.01
 // ==/UserScript==
 
 /* global W */
@@ -28,9 +28,11 @@
 // Instructions
 // 1) install this script in Tampermonkey
 // 2) select a road in WME
-// 3) click the "Use for MC" button at the bottom of the left pane
-// 4) create a new Map Comment or select an existing one
-// 5) click the "Map Comment on Road" button on the left pane
+// 3) click the "Use for Note" button at the bottom of the left pane
+// 4) create a new Map Note or select an existing one
+// 5) click the "Map Note on Road" button on the left pane
+//
+// 6) If you want to convert a point note to a camera-shaped area, create a new Map Note or select an existing one, and then click the corresponding button
 
 /*
 
@@ -49,13 +51,27 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 */
 
 (function() {
-    const UPDATE_NOTES = 'Added dropdown for comment width';
+	const UPDATE_NOTES = 'Added ability to create map comment shapes';
 	const SCRIPT_NAME = GM_info.script.name;
-    const SCRIPT_VERSION = GM_info.script.version;
+	const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
 	const idMapCommentGeo = 1;
 
+	const CameraLeftPoints = [[11,6],[-4,6],[-4,3],[-11,6],[-11,-6],[-4,-3],[-4,-6],[11,-6]];
+	const CameraRightPoints = [[-11,6],[4,6],[4,3],[11,6],[11,-6],[4,-3],[4,-6],[-11,-6]];
+	const CameraUpPoints = [[6,-11],[6,4],[3,4],[6,11],[-6,11],[-3,4],[-6,4],[-6,-11]];
+	const CameraDownPoints = [[6,11],[6,-4],[3,-4],[6,-11],[-6,-11],[-3,-4],[-6,-4],[-6,11]];
+
+/*
+	const CameraLeftPoints = [[12,9],[-4,9],[-4,5],[-12,9],[-12,-9],[-4,-5],[-4,-9],[12,-9]];
+	const CameraRightPoints = [[-12,9],[4,9],[4,5],[12,9],[12,-9],[4,-5],[4,-9],[-12,-9]];
+	const CameraUpPoints = [[9,-12],[9,4],[5,4],[9,12],[-9,12],[-5,4],[-9,4],[-9,-12]];
+	const CameraDownPoints = [[9,12],[9,-4],[5,-4],[9,-12],[-9,-12],[-5,-4],[-9,-4],[-9,12]];
+*/
+
 	var polyPoints = null;
+	let prevLeftEq;
+	let prevRightEq;
 
 	// Default widths of the Map Comment around the existing road depending on road type
 	// sel.attributes.roadType: 1 = Street, 2 = PS, 3 = Freeway, 4 = Ramp, 6 = MH, 7 = mH, 8 = Offroad, 17 = Private, 20 = Parking lot
@@ -64,26 +80,41 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 	let TheCommentWidth;
 
-    function addWMEMCbutton() {
-        if (WazeWrap.hasMapCommentSelected()) {
-            let mapComment = WazeWrap.getSelectedFeatures()[0];
-            const lockRegion = $('.lock-edit-region');
+	function addWMEMCbutton() {
+		if (WazeWrap.hasMapCommentSelected()) {
+			let mapComment = WazeWrap.getSelectedFeatures()[0];
+			const lockRegion = $('.lock-edit-region');
 
-            const regionDiv = $('<div class="WME-MC-region"/>');
-            const mainDiv = $('<div class="form-group"/>');
-            mainDiv.append($('<label class="WME-MC-label control-label">WME MapCommentGeometry</label>'));
-            const controlsDiv = $('<div class="controls"/>');
-            controlsDiv.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Map Comment on Road</button></div>'));
+			const regionDiv = $('<div class="WME-MC-region"/>');
+			const mainDiv = $('<div class="form-group"/>');
+			mainDiv.append($('<label class="WME-MC-label control-label">Note Geometry</label>'));
+			const controlsDiv = $('<div class="controls"/>');
+			controlsDiv.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Map Note on Road</button></div>'));
 
-            mainDiv.append(controlsDiv);
-            regionDiv.append(mainDiv);
-            lockRegion.before(regionDiv);
 
-            $('.WMEMapCommentGeoButton').on('click', WMEcreateComment);
-        }
-    }
+			controlsDiv.append($('<label class="camers-creator-label control-label">Camera-Shaped Notes</label>'));
+//			const controlsDiv = $('<div class="controls"/>');
+			controlsDiv.append($('<div><button id="LCamera" class="waze-btn LCameraButton" type="button">Left</button></div>'));
+			controlsDiv.append($('<div><button id="UCamera" class="waze-btn UCameraButton" type="button">Up</button></div>'));
+			controlsDiv.append($('<div><button id="RCamera" class="waze-btn RCameraButton" type="button">Right</button></div>'));
+			controlsDiv.append($('<div><button id="DCamera" class="waze-btn DCameraButton" type="button">Down</button></div>'));
 
-    function WMEcreateComment() {
+
+			mainDiv.append(controlsDiv);
+			regionDiv.append(mainDiv);
+			lockRegion.before(regionDiv);
+
+			$('.WMEMapCommentGeoButton').on('click', WMEcreateComment);
+
+			$('.LCameraButton').on('click', createLCamera);
+			$('.UCameraButton').on('click', createUCamera);
+			$('.RCameraButton').on('click', createRCamera);
+			$('.DCameraButton').on('click', createDCamera);
+
+		}
+	}
+
+	function WMEcreateComment() {
 		if(polyPoints === null){
 				console.error("WME MapCommentGeometry: No road selected!");
 				return null;
@@ -93,10 +124,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		}
 	}
 
-    function updateCommentForRoad(points) {
-        if (WazeWrap.hasMapCommentSelected())
-        {
-            let model = WazeWrap.getSelectedDataModelObjects()[0];
+	function updateCommentForRoad(points) {
+		if (WazeWrap.hasMapCommentSelected())
+		{
+			let model = WazeWrap.getSelectedDataModelObjects()[0];
 			var newerGeo;
 			var newerLinear;
 
@@ -106,11 +137,42 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			newerLinear.components = points;
 
 			newerGeo.components[0] = newerLinear;
-            newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
-            let UO = require("Waze/Action/UpdateObject");
-            W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
-        }
-    }
+			newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
+			let UO = require("Waze/Action/UpdateObject");
+			W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
+		}
+	}
+
+
+	function updateCommentForCamera(points){
+		if (WazeWrap.hasMapCommentSelected())
+		{
+			let model = WazeWrap.getSelectedDataModelObjects()[0];
+
+			center = model.getOLGeometry().getCentroid();
+
+			let newerGeo = getCameraWKT(points);
+			newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
+			let UO = require("Waze/Action/UpdateObject");
+			W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
+		}
+	}
+
+	function createLCamera(){ updateCommentForCamera(CameraLeftPoints); }
+	function createUCamera(){ updateCommentForCamera(CameraUpPoints); }
+	function createRCamera(){ updateCommentForCamera(CameraRightPoints); }
+	function createDCamera(){ updateCommentForCamera(CameraDownPoints); }
+
+	function getCameraWKT(points){
+		let wktText = 'POLYGON((';
+		for (let i=0; i < points.length; i++){
+			wktText += `${center.x + points[i][0]} ${center.y + points[i][1]},`;
+		}
+		wktText = wktText.slice(0, -1)
+		wktText += '))';
+		return OpenLayers.Geometry.fromWKT(wktText);
+	}
+
 
 	function WMEMapCommentGeometry_bootstrap() {
 	   var wazeapi = W || window.W;
@@ -124,7 +186,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 	function WMEMapCommentGeometry_init() {
 
-        try {
+		try {
 			let updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, 'https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js', GM_xmlhttpRequest);
 			updateMonitor.start();
 		} catch (ex) {
@@ -196,7 +258,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				}
 			}
 
-            WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_NOTES, '');
+			WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_NOTES, '');
 
 			console.log("WME MapCommentGeometry");
 		}
@@ -204,93 +266,99 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 		// Process Map Comment Button
 		function doMapComment(ev) {
-			var convertOK;
-			var foundSelectedSegment = false;
+			// let convertOK;
+			const foundSelectedSegment = false;
+			let sel;
+			let NumSegments;
+			polyPoints = null;
 
 			// 2013-10-20: Get comment width
-			var selCommentWidth = document.getElementById('CommentWidth');
-			TheCommentWidth = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value);
+			const selCommentWidth = document.getElementById('CommentWidth');
+			TheCommentWidth = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value, 10);
 
 			setlastCommentWidth(TheCommentWidth);
 
-			console.log("Comment width: " + TheCommentWidth);
+			console.log(`Comment width: ${TheCommentWidth}`);
 
 			// Search for helper road. If found create or expand a Map Comment
 
-			var f = W.selectionManager.getSelectedFeatures()
+			const f = W.selectionManager.getSelectedFeatures();
 
 			if (f.length === 0) {
-				console.error("No road selected!");
+				console.error('No road selected!');
 				return null;
 			}
 
-			for (var s=f.length-1; s>=0; s--) {
+			NumSegments = f.length - 1;
+			for (let s = NumSegments; s >= 0; s--) {
+				sel = f[s]._wmeObject;
 
-				var sel = f[s]._wmeObject;
-
-				if (sel.type == "segment") {
+				if (sel.type === 'segment') {
 					// found segment
-					foundSelectedSegment = true;
-					convertOK = convertToLandmark(sel);
+					// foundSelectedSegment = true;
+					// convertOK = convertToLandmark(sel);
+					convertToLandmark(sel, NumSegments, s);
 				}
 			}
 		}
 
 		// Based on selected helper road modifies a map comment to precisely follow the road's geometry
-		function convertToLandmark(sel) {
-			var i;
-			var leftPa, rightPa, leftPb, rightPb;
-			var prevLeftEq, prevRightEq;
-			var street = getStreet(sel);
+		function convertToLandmark(sel, NumSegments, s) {
+			let i;
+			let leftPa; let rightPa; let leftPb; let rightPb;
+//			let prevLeftEq; let prevRightEq;
+//			const street = getStreet(sel);
 
-			var streetVertices = sel.geometry.getVertices();
+			const streetVertices = sel.geometry.getVertices();
 
-			var firstStreetVerticeOutside = 0;
+			const firstStreetVerticeOutside = 0;
 
 			// 2013-10-13: Add to polyPoints polygon
-			console.log("WME Map Comment polygon: Create");
-			var first = 0;
+			if (s<=1) {
+				console.log('WME Map Comment polygon: Create');
+			}
+			const first = 0;
 
-			polyPoints = null;
+//			polyPoints = null;
 
-			for (i=first; i < streetVertices.length-1; i++)
-			{
-				var pa = streetVertices[i];
-				var pb = streetVertices[i+1];
-				var scale = (pa.distanceTo(pb) + TheCommentWidth) / pa.distanceTo(pb);
+
+			for (i = first; i < streetVertices.length - 1; i++) {
+				const pa = streetVertices[i];
+				const pb = streetVertices[i + 1];
+				const scale = (pa.distanceTo(pb) + TheCommentWidth) / pa.distanceTo(pb);
 
 				leftPa = pa.clone();
 				leftPa.resize(scale, pb, 1);
 				rightPa = leftPa.clone();
-				leftPa.rotate(90,pa);
-				rightPa.rotate(-90,pa);
+				leftPa.rotate(90, pa);
+				rightPa.rotate(-90, pa);
 
 				leftPb = pb.clone();
 				leftPb.resize(scale, pa, 1);
 				rightPb = leftPb.clone();
-				leftPb.rotate(-90,pb);
-				rightPb.rotate(90,pb);
+				leftPb.rotate(-90, pb);
+				rightPb.rotate(90, pb);
 
-				var leftEq = getEquation({ 'x1': leftPa.x, 'y1': leftPa.y, 'x2': leftPb.x, 'y2': leftPb.y });
-				var rightEq = getEquation({ 'x1': rightPa.x, 'y1': rightPa.y, 'x2': rightPb.x, 'y2': rightPb.y });
+				const leftEq = getEquation({
+					x1: leftPa.x, y1: leftPa.y, x2: leftPb.x, y2: leftPb.y
+				});
+				const rightEq = getEquation({
+					x1: rightPa.x, y1: rightPa.y, x2: rightPb.x, y2: rightPb.y
+				});
 
-				if (polyPoints === null) {
-					polyPoints = [ leftPa, rightPa ];
-				}
+				if (polyPoints === null) polyPoints = [leftPa, rightPa];
 				else {
-					var li = intersectX(leftEq, prevLeftEq);
-					var ri = intersectX(rightEq, prevRightEq);
+					const li = intersectX(leftEq, prevLeftEq);
+					const ri = intersectX(rightEq, prevRightEq);
 					if (li && ri) {
 						// 2013-10-17: Is point outside comment?
-						if(i>=firstStreetVerticeOutside) {
+						if (i >= firstStreetVerticeOutside) {
 							polyPoints.unshift(li);
 							polyPoints.push(ri);
 						}
-					}
-
-					else {
+					} else {
 						// 2013-10-17: Is point outside comment?
-						if(i>=firstStreetVerticeOutside) {
+						if (i >= firstStreetVerticeOutside) {
 							polyPoints.unshift(leftPb.clone());
 							polyPoints.push(rightPb.clone());
 						}
@@ -300,13 +368,13 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				prevLeftEq = leftEq;
 				prevRightEq = rightEq;
 
-				console.log("Point:" + leftPb + "  " + rightPb);
+				console.log(`Point:${leftPb}  ${rightPb}`);
 
 				// 2013-06-03: Is Waze limit reached?
-// YUL_: Is this still relevant?
-//				if (polyPoints.length > 50) {
-//					break;
-//				}
+				// YUL_: Is this still relevant?
+				//				if (polyPoints.length > 50) {
+				//					break;
+				//				}
 			}
 
 			polyPoints.push(rightPb);
@@ -314,10 +382,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 			// YUL_: Add the first point at the end of the array to close the shape!
 			// YUL_: When creating a comment or other polygon, WME will automatically do this, but since we are modifying an existing Map Comment, we must do it here!
-			polyPoints.push(polyPoints[0]);
-
-			// YUL_: At this point we have the shape we need, and have to convert the existing map comment into that shape.
-			console.log("WME Map Comment polygon: done");
+			if (s==0) {
+				polyPoints.push(polyPoints[0]);
+				// YUL_: At this point we have the shape we need, and have to convert the existing map comment into that shape.
+				console.log("WME Map Comment polygon: done");
+			}
 
 			return true;
 	  }
@@ -405,7 +474,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		function intLanguageStrings() {
 			switch(getLanguage()) {
 				default:		// 2014-06-05: English
-					langText = new Array("Select a road and click this button.","Use for MC");
+					langText = new Array("Select a road and click this button.","Use for Note");
 			}
 		}
 
