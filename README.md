@@ -1,6 +1,6 @@
 # <p align="center">WME MapCommentGeometry</p>
 
-This script creates a note around a single selected road segment. It also allows you to create a camera-shaped note.
+This script creates a note around a single selected road segment. It also allows you to create a camera or an arrow shaped note.
 
 ## Instructions
 1) Install this script in Tampermonkey.
@@ -9,6 +9,7 @@ This script creates a note around a single selected road segment. It also allows
 4) Click the "Use for MC" button at the bottom of the left pane.
 5) Create a new Map Comment or select an existing one.
 6) Click the "Map Comment on Road" button on the left pane.
-7) If you want to convert a point note to a camera-shaped area, create a new Map Note or select an existing one, and then click the corresponding button.
+7) If you want to convert a point note to a camera or arrow-shaped area, create a new Map Note or select an existing one, and then click the corresponding button.
+8) If required, use WME PIE to rotate the resulting shape.
 
 <p align="center"><a href="https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js"><img src="https://i.ibb.co/JzHFKzj/button-install-here.png"></a></p>
