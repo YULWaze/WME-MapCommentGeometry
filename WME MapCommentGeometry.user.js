@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name 			WME MapCommentGeometry
 // @author			YUL_
-// @description 	This script creates a map note around a single selected road segment. It also allows you to create a camera-shaped note. 
+// @description 	This script creates a map note around a single selected road segment. It also allows you to create a camera or an arrow shaped note.
 // @match	  		*://*.waze.com/*editor*
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
@@ -9,7 +9,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.10.16.02
+// @version 		2024.10.20.01
 // ==/UserScript==
 
 /* global W */
@@ -62,18 +62,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	const CameraUpPoints = [[6,-11],[6,4],[3,4],[6,11],[-6,11],[-3,4],[-6,4],[-6,-11]];
 	const CameraDownPoints = [[6,11],[6,-4],[3,-4],[6,-11],[-6,-11],[-3,-4],[-6,-4],[-6,11]];
 
-/*
-	const CameraLeftPoints = [[12,9],[-4,9],[-4,5],[-12,9],[-12,-9],[-4,-5],[-4,-9],[12,-9]];
-	const CameraRightPoints = [[-12,9],[4,9],[4,5],[12,9],[12,-9],[4,-5],[4,-9],[-12,-9]];
-	const CameraUpPoints = [[9,-12],[9,4],[5,4],[9,12],[-9,12],[-5,4],[-9,4],[-9,-12]];
-	const CameraDownPoints = [[9,12],[9,-4],[5,-4],[9,-12],[-9,-12],[-5,-4],[-9,-4],[-9,12]];
-*/
+    const ArrowRightPoints = [[0,-36],[0,-12],[5,-7],[12,-6],[24,-6],[24,-18],[36,0],[24,18],[24,6],[12,6],[2,4],[-4,2],[-8,-2],[-12,-9],[-12,-36]];
+    const ArrowLeftPoints = [[0,-36],[0,-12],[-5,-7],[-12,-6],[-24,-6],[-24,-18],[-36,0],[-24,18],[-24,6],[-12,6],[-2,4],[4,2],[8,-2],[12,-9],[12,-36]];
+
 
 	var polyPoints = null;
 	let prevLeftEq;
 	let prevRightEq;
-	let center;
-	
+
 	// Default widths of the Map Comment around the existing road depending on road type
 	// sel.attributes.roadType: 1 = Street, 2 = PS, 3 = Freeway, 4 = Ramp, 6 = MH, 7 = mH, 8 = Offroad, 17 = Private, 20 = Parking lot
 //	const CommentWidths = [15,20,40,15,15,30,30];
@@ -88,18 +84,22 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 			const regionDiv = $('<div class="WME-MC-region"/>');
 			const mainDiv = $('<div class="form-group"/>');
-			mainDiv.append($('<label class="WME-MC-label control-label">Note Geometry</label>'));
+			mainDiv.append($('<label class="WME-MC-label control-label">Map Note on Road</label>'));
 			const controlsDiv = $('<div class="controls"/>');
-			controlsDiv.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Map Note on Road</button></div>'));
+			controlsDiv.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Click</button></div>'));
 
 
-			controlsDiv.append($('<label class="camers-creator-label control-label">Camera-Shaped Notes</label>'));
+			controlsDiv.append($('<label class="camers-creator-label control-label">Cameras</label>'));
 //			const controlsDiv = $('<div class="controls"/>');
 			controlsDiv.append($('<div><button id="LCamera" class="waze-btn LCameraButton" type="button">Left</button></div>'));
 			controlsDiv.append($('<div><button id="UCamera" class="waze-btn UCameraButton" type="button">Up</button></div>'));
 			controlsDiv.append($('<div><button id="RCamera" class="waze-btn RCameraButton" type="button">Right</button></div>'));
 			controlsDiv.append($('<div><button id="DCamera" class="waze-btn DCameraButton" type="button">Down</button></div>'));
 
+			controlsDiv.append($('<label class="camers-creator-label control-label">Arrows</label>'));
+//			const controlsDiv = $('<div class="controls"/>');
+			controlsDiv.append($('<div><button id="LArrow" class="waze-btn LArrowButton" type="button">Left</button></div>'));
+			controlsDiv.append($('<div><button id="RArrow" class="waze-btn RArrowButton" type="button">Right</button></div>'));
 
 			mainDiv.append(controlsDiv);
 			regionDiv.append(mainDiv);
@@ -112,6 +112,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			$('.RCameraButton').on('click', createRCamera);
 			$('.DCameraButton').on('click', createDCamera);
 
+			$('.LArrowButton').on('click', createLArrow);
+			$('.RArrowButton').on('click', createRArrow);
 		}
 	}
 
@@ -145,26 +147,29 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 
-	function updateCommentForCamera(points){
+	function updateCommentGeometry(points){
 		if (WazeWrap.hasMapCommentSelected())
 		{
 			let model = WazeWrap.getSelectedDataModelObjects()[0];
 
 			center = model.getOLGeometry().getCentroid();
 
-			let newerGeo = getCameraWKT(points);
+			let newerGeo = getShapeWKT(points);
 			newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
 			let UO = require("Waze/Action/UpdateObject");
 			W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
 		}
 	}
 
-	function createLCamera(){ updateCommentForCamera(CameraLeftPoints); }
-	function createUCamera(){ updateCommentForCamera(CameraUpPoints); }
-	function createRCamera(){ updateCommentForCamera(CameraRightPoints); }
-	function createDCamera(){ updateCommentForCamera(CameraDownPoints); }
+	function createLCamera(){ updateCommentGeometry(CameraLeftPoints); }
+	function createUCamera(){ updateCommentGeometry(CameraUpPoints); }
+	function createRCamera(){ updateCommentGeometry(CameraRightPoints); }
+	function createDCamera(){ updateCommentGeometry(CameraDownPoints); }
 
-	function getCameraWKT(points){
+	function createLArrow(){ updateCommentGeometry(ArrowLeftPoints); }
+	function createRArrow(){ updateCommentGeometry(ArrowRightPoints); }
+
+	function getShapeWKT(points){
 		let wktText = 'POLYGON((';
 		for (let i=0; i < points.length; i++){
 			wktText += `${center.x + points[i][0]} ${center.y + points[i][1]},`;
@@ -173,7 +178,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		wktText += '))';
 		return OpenLayers.Geometry.fromWKT(wktText);
 	}
-
 
 	function WMEMapCommentGeometry_bootstrap() {
 	   var wazeapi = W || window.W;
