@@ -87,19 +87,24 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			mainDiv.append($('<label class="WME-MC-label control-label">Map Note on Road</label>'));
 			const controlsDiv = $('<div class="controls"/>');
 			controlsDiv.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Click</button></div>'));
-
-
+			
 			controlsDiv.append($('<label class="camers-creator-label control-label">Cameras</label>'));
-//			const controlsDiv = $('<div class="controls"/>');
-			controlsDiv.append($('<div><button id="LCamera" class="waze-btn LCameraButton" type="button">Left</button></div>'));
-			controlsDiv.append($('<div><button id="UCamera" class="waze-btn UCameraButton" type="button">Up</button></div>'));
-			controlsDiv.append($('<div><button id="RCamera" class="waze-btn RCameraButton" type="button">Right</button></div>'));
-			controlsDiv.append($('<div><button id="DCamera" class="waze-btn DCameraButton" type="button">Down</button></div>'));
+			const joystickContainer = $('<div style="display: flex; flex-direction: column; align-items: center;"/>');
+			joystickContainer.append($('<button id="UCamera" class="waze-btn UCameraButton" type="button" style="margin-bottom: 5px;">Up</button>'));
+			
+			const middleRow = $('<div style="display: flex; gap: 1em;"/>');
+			middleRow.append($('<button id="LCamera" class="waze-btn LCameraButton" type="button">Left</button>'));
+			middleRow.append($('<button id="RCamera" class="waze-btn RCameraButton" type="button">Right</button>'));
+			joystickContainer.append(middleRow);
+			
+			joystickContainer.append($('<button id="DCamera" class="waze-btn DCameraButton" type="button" style="margin-top: 5px;">Down</button>'));
+			controlsDiv.append(joystickContainer);
 
 			controlsDiv.append($('<label class="camers-creator-label control-label">Arrows</label>'));
-//			const controlsDiv = $('<div class="controls"/>');
-			controlsDiv.append($('<div><button id="LArrow" class="waze-btn LArrowButton" type="button">Left</button></div>'));
-			controlsDiv.append($('<div><button id="RArrow" class="waze-btn RArrowButton" type="button">Right</button></div>'));
+			const arrowContainer = $('<div style="display: flex; gap: 1em; justify-content: center;"/>');
+			arrowContainer.append($('<button id="LArrow" class="waze-btn LArrowButton" type="button">Left</button>'));
+			arrowContainer.append($('<button id="RArrow" class="waze-btn RArrowButton" type="button">Right</button>'));
+			controlsDiv.append(arrowContainer);
 
 			mainDiv.append(controlsDiv);
 			regionDiv.append(mainDiv);
