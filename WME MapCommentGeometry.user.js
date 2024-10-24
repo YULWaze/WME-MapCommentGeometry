@@ -175,6 +175,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function createDCamera(){ updateCommentGeometry(CameraDownPoints); }
 
 	function createLArrow(){ updateCommentGeometry(ArrowLeftPoints); }
+    function createSArrow(){ updateCommentGeometry(ArrowStraightPoints); }
 	function createRArrow(){ updateCommentGeometry(ArrowRightPoints); }
 
 	function getShapeWKT(points){
