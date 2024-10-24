@@ -9,7 +9,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.10.21.01
+// @version 		2024.10.24.01
 // ==/UserScript==
 
 /* global W */
@@ -63,6 +63,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
     const ArrowRightPoints = [[0,-36],[0,-12],[5,-7],[12,-6],[24,-6],[24,-18],[36,0],[24,18],[24,6],[12,6],[2,4],[-4,2],[-8,-2],[-12,-9],[-12,-36]];
     const ArrowLeftPoints = [[0,-36],[0,-12],[-5,-7],[-12,-6],[-24,-6],[-24,-18],[-36,0],[-24,18],[-24,6],[-12,6],[-2,4],[4,2],[8,-2],[12,-9],[12,-36]];
+    const ArrowStraightPoints = [[6,-18],[6,6],[18,6],[0,18],[-18,6],[-6,6],[-6,-18]];
 
 	var polyPoints = null;
 	let prevLeftEq;
@@ -104,6 +105,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			controlsDiv.append($('<label class="camers-creator-label control-label">Arrows</label>'));
 			const arrowContainer = $('<div style="display: flex; gap: 1em; justify-content: center;"/>');
 			arrowContainer.append($('<button id="LArrow" class="waze-btn LArrowButton" type="button">Left</button>'));
+			arrowContainer.append($('<button id="LArrow" class="waze-btn SArrowButton" type="button">Straight</button>'));
 			arrowContainer.append($('<button id="RArrow" class="waze-btn RArrowButton" type="button">Right</button>'));
 			controlsDiv.append(arrowContainer);
 
@@ -119,6 +121,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			$('.DCameraButton').on('click', createDCamera);
 
 			$('.LArrowButton').on('click', createLArrow);
+			$('.SArrowButton').on('click', createSArrow);
 			$('.RArrowButton').on('click', createRArrow);
 		}
 	}
