@@ -299,7 +299,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
-	function convertToLandmark(sel, NumSegments, s, conversion = { points: polyPoints, lastRightEq, lastLeftEq }, width = TheCommentWidth) {
+	function convertToLandmark(sel, NumSegments, s, conversion = { points: polyPoints, lastRightEq: prevRightEq, lastLeftEq: prevLeftEq }, width = TheCommentWidth) {
 		let i;
 		let leftPa; let rightPa; let leftPb; let rightPb;
 
