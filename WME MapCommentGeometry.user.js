@@ -276,24 +276,31 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		console.log("WME MapCommentGeometry");
 	}
 
+	function getGeometryForSegments(segments, width) {
+		const conversion = {
+			points: null,
+			lastLeftEq: null,
+			lastRightEq: null,
+		};
+
+		for (let i = segments.length - 1; i >= 0; i--) {
+			const segment = segments[i];
+			convertToLandmark(segment, NaN, i, conversion, width);
+		}
+
+		return conversion.points;
+	}
+
 
 	// Process Map Comment Button
 	function doMapComment(ev) {
-		// let convertOK;
-		const foundSelectedSegment = false;
-		let sel;
-		let NumSegments;
-		polyPoints = null;
-
 		// 2013-10-20: Get comment width
 		const selCommentWidth = document.getElementById('CommentWidth');
-		TheCommentWidth = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value, 10);
+		const width = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value, 10);
 
-		setlastCommentWidth(TheCommentWidth);
+		setlastCommentWidth(width);
 
-		console.log(`Comment width: ${TheCommentWidth}`);
-
-		// Search for helper road. If found create or expand a Map Comment
+		console.log(`Comment width: ${width}`);
 
 		const f = W.selectionManager.getSelectedFeatures();
 
@@ -302,14 +309,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			return null;
 		}
 
-		NumSegments = f.length - 1;
-		for (let s = NumSegments; s >= 0; s--) {
-			sel = f[s]._wmeObject;
-
-			if (sel.type === 'segment') {
-				convertToLandmark(sel, NumSegments, s);
-			}
-		}
+		const segments = f.map((feature) => feature._wmeObject).filter((object) => object.type === 'segment');
+		polyPoints = getGeometryForSegments(segments, width);
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
