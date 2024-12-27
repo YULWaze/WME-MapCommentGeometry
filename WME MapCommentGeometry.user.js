@@ -313,7 +313,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
-	function convertToLandmark(sel, NumSegments, s) {
+	function convertToLandmark(sel, NumSegments, s, conversion = { points: polyPoints, lastRightEq, lastLeftEq }, width = TheCommentWidth) {
 		let i;
 		let leftPa; let rightPa; let leftPb; let rightPb;
 
@@ -332,7 +332,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		for (i = first; i < streetVertices.length - 1; i++) {
 			const pa = streetVertices[i];
 			const pb = streetVertices[i + 1];
-			const scale = (pa.distanceTo(pb) + TheCommentWidth) / pa.distanceTo(pb);
+			const scale = (pa.distanceTo(pb) + width) / pa.distanceTo(pb);
 			leftPa = pa.clone();
 			leftPa.resize(scale, pb, 1);
 			rightPa = leftPa.clone();
@@ -352,43 +352,43 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				x1: rightPa.x, y1: rightPa.y, x2: rightPb.x, y2: rightPb.y
 			});
 
-			if (polyPoints === null) polyPoints = [leftPa, rightPa];
+			if (conversion.points === null) conversion.points = [leftPa, rightPa];
 			else {
-				const li = intersectX(leftEq, prevLeftEq);
-				const ri = intersectX(rightEq, prevRightEq);
+				const li = intersectX(leftEq, conversion.lastLeftEq);
+				const ri = intersectX(rightEq, conversion.lastRightEq);
 				if (li && ri) {
 					// 2013-10-17: Is point outside comment?
 					if (i >= firstStreetVerticeOutside) {
-						polyPoints.unshift(li);
-						polyPoints.push(ri);
+						conversion.points.unshift(li);
+						conversion.points.push(ri);
 					}
 				} else {
 					// 2013-10-17: Is point outside comment?
 					if (i >= firstStreetVerticeOutside) {
-						polyPoints.unshift(leftPb.clone());
-						polyPoints.push(rightPb.clone());
+						conversion.points.unshift(leftPb.clone());
+						conversion.points.push(rightPb.clone());
 					}
 				}
 			}
 
-			prevLeftEq = leftEq;
-			prevRightEq = rightEq;
+			conversion.lastLeftEq = leftEq;
+			conversion.lastRightEq = rightEq;
 
 			console.log(`Point:${leftPb}  ${rightPb}`);
 		}
 
-		polyPoints.push(rightPb);
-		polyPoints.push(leftPb);
+		conversion.points.push(rightPb);
+		conversion.points.push(leftPb);
 
 		// YUL_: Add the first point at the end of the array to close the shape!
 		// YUL_: When creating a comment or other polygon, WME will automatically do this, but since we are modifying an existing Map Comment, we must do it here!
 		if (s==0) {
-			polyPoints.push(polyPoints[0]);
+			conversion.points.push(conversion.points[0]);
 			// YUL_: At this point we have the shape we need, and have to convert the existing map comment into that shape.
 			console.log("WME Map Comment polygon: done");
 		}
 
-		return true;
+		return conversion.points;
   }
 
 	function getEquation(segment) {
