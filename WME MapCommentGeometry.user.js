@@ -6,6 +6,7 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require	  	https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require			https://davidsl4.github.io/WMEScripts/lib/map-comments-polyfill.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
@@ -83,13 +84,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 			const regionDiv = $('<div class="WME-MC-region"/>');
 			const mainDiv = $('<div class="form-group"/>');
-			mainDiv.append($('<label class="WME-MC-label control-label">Map Note on Road</label>'));
 			const controlsDiv = $('<div class="controls"/>');
 
-			const noteContainer = $('<div style="display: flex; gap: 1em; justify-content: center;"/>');
-			noteContainer.append($('<div><button id="WMEMapCommentGeo" class="waze-btn WMEMapCommentGeoButton" type="button">Click</button></div>'));
-			controlsDiv.append(noteContainer);
-			
 			controlsDiv.append($('<label class="camers-creator-label control-label">Cameras</label>'));
 			const joystickContainer = $('<div style="display: flex; flex-direction: column; align-items: center;"/>');
 			joystickContainer.append($('<button id="UCamera" class="waze-btn UCameraButton" type="button" style="margin-bottom: 5px;">Up</button>'));
@@ -113,8 +109,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			regionDiv.append(mainDiv);
 			lockRegion.before(regionDiv);
 
-			$('.WMEMapCommentGeoButton').on('click', WMEcreateComment);
-
 			$('.LCameraButton').on('click', createLCamera);
 			$('.UCameraButton').on('click', createUCamera);
 			$('.RCameraButton').on('click', createRCamera);
@@ -126,33 +120,20 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		}
 	}
 
-	function WMEcreateComment() {
-		if(polyPoints === null){
-				console.error("WME MapCommentGeometry: No road selected!");
-				return null;
-		}
-		else{
-			updateCommentForRoad(polyPoints);
-		}
-	}
+	async function createComment(points) {
+		// YUL_: Is it actually necessary to create a Polygon and put a LinearRing inside it?
+		newerGeo = new OpenLayers.Geometry.Polygon;
+		newerLinear = new OpenLayers.Geometry.LinearRing;
+		newerLinear.components = points;
 
-	function updateCommentForRoad(points) {
-		if (WazeWrap.hasMapCommentSelected())
-		{
-			let model = WazeWrap.getSelectedDataModelObjects()[0];
-			var newerGeo;
-			var newerLinear;
-
-// YUL_: Is it actually necessary to create a Polygon and put a LinearRing inside it?
-			newerGeo = new OpenLayers.Geometry.Polygon;
-			newerLinear = new OpenLayers.Geometry.LinearRing;
-			newerLinear.components = points;
-
-			newerGeo.components[0] = newerLinear;
-			newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
-			let UO = require("Waze/Action/UpdateObject");
-			W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
-		}
+		newerGeo.components[0] = newerLinear;
+		newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
+		let CO = require("Waze/Action/CreateObject");
+		const mapComment = await WS.MapNotes.createNote({
+			geoJSONGeometry: newerGeo,
+		});
+		W.model.actionManager.add(new CO(mapComment, W.model.mapComments)); // CO accepts two arguments: entity and repository
+		return mapComment;
 	}
 
 	function updateCommentGeometry(points){
@@ -310,7 +291,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		}
 
 		const segments = f.map((feature) => feature._wmeObject).filter((object) => object.type === 'segment');
-		polyPoints = getGeometryForSegments(segments, width);
+
+		createComment(getGeometryForSegments(segments, width)).then((mapComment) => {
+			W.selectionManager.unselectAll();
+			W.selectionManager.selectFeatures([mapComment.getID()]);
+		});
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
@@ -474,7 +459,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function intLanguageStrings() {
 		switch(getLanguage()) {
 			default:		// 2014-06-05: English
-				langText = new Array("Select a road and click this button.","Use for Note");
+				langText = new Array("Select a road and click this button.","Create Note");
 		}
 	}
 
