@@ -70,11 +70,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     const ArrowLeftPoints = [[0,-36],[0,-12],[-5,-7],[-12,-6],[-24,-6],[-24,-18],[-36,0],[-24,18],[-24,6],[-12,6],[-2,4],[4,2],[8,-2],[12,-9],[12,-36]];
     const ArrowStraightPoints = [[6,-18],[6,6],[18,6],[0,18],[-18,6],[-6,6],[-6,-18]];
 
-	var polyPoints = null;
-	let prevLeftEq;
-	let prevRightEq;
-    let center;
-
     // Default widths of the Map Comment around the existing road depending on road type
     // sel.attributes.roadType: 1 = Street, 2 = PS, 3 = Freeway, 4 = Ramp, 6 = MH, 7 = mH, 8 = Offroad, 17 = Private, 20 = Parking lot
     //	const CommentWidths = [15,20,40,15,15,30,30];
@@ -469,19 +464,13 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 	function getGeometryForSegments(segments, width) {
-		const conversion = {
-			points: null,
-			lastLeftEq: null,
-			lastRightEq: null,
-		};
-
 		const mergedGeometryCoordinates = mergeSegmentsGeometry(segments.map((segment) => segment.attributes.id));
 		const mergedGeoJSONGeometry = {
 			type: 'LineString',
 			coordinates: mergedGeometryCoordinates,
 		};
 
-		return convertToLandmark(mergedGeoJSONGeometry, NaN, 0, conversion, width);
+		return convertToLandmark(mergedGeoJSONGeometry, width);
 	}
 
 	function getGeometryOfSelection(width) {
@@ -506,128 +495,18 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return getGeometryForSegments(segments, width);
 	}
 
-	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
-	function convertToLandmark(geometry, NumSegments, s, conversion = { points: polyPoints, lastRightEq: prevRightEq, lastLeftEq: prevLeftEq }, width = TheCommentWidth) {
-		let i;
-		let leftPa; let rightPa; let leftPb; let rightPb;
-
-		const olGeometry = W.userscripts.toOLGeometry(geometry);
-		const streetVertices = olGeometry.getVertices();
-
-		const firstStreetVerticeOutside = 0;
-
-		// 2013-10-13: Add to polyPoints polygon
-		if (s<=1) {
-			console.log('WME Map Comment polygon: Create');
-		}
-		const first = 0;
-
-//		polyPoints = null;
-
-		for (i = first; i < streetVertices.length - 1; i++) {
-			const pa = streetVertices[i];
-			const pb = streetVertices[i + 1];
-			const scale = (pa.distanceTo(pb) + width) / pa.distanceTo(pb);
-			leftPa = pa.clone();
-			leftPa.resize(scale, pb, 1);
-			rightPa = leftPa.clone();
-			leftPa.rotate(90, pa);
-			rightPa.rotate(-90, pa);
-
-			leftPb = pb.clone();
-			leftPb.resize(scale, pa, 1);
-			rightPb = leftPb.clone();
-			leftPb.rotate(-90, pb);
-			rightPb.rotate(90, pb);
-
-			const leftEq = getEquation({
-				x1: leftPa.x, y1: leftPa.y, x2: leftPb.x, y2: leftPb.y
-			});
-			const rightEq = getEquation({
-				x1: rightPa.x, y1: rightPa.y, x2: rightPb.x, y2: rightPb.y
-			});
-
-			if (conversion.points === null) conversion.points = [leftPa, rightPa];
-			else {
-				const li = intersectX(leftEq, conversion.lastLeftEq);
-				const ri = intersectX(rightEq, conversion.lastRightEq);
-				if (li && ri) {
-					// 2013-10-17: Is point outside comment?
-					if (i >= firstStreetVerticeOutside) {
-						conversion.points.unshift(li);
-						conversion.points.push(ri);
-					}
-				} else {
-					// 2013-10-17: Is point outside comment?
-					if (i >= firstStreetVerticeOutside) {
-						conversion.points.unshift(leftPb.clone());
-						conversion.points.push(rightPb.clone());
-					}
-				}
-			}
-
-			conversion.lastLeftEq = leftEq;
-			conversion.lastRightEq = rightEq;
-
-			console.log(`Point:${leftPb}  ${rightPb}`);
-		}
-
-		conversion.points.push(rightPb);
-		conversion.points.push(leftPb);
-
-		// YUL_: Add the first point at the end of the array to close the shape!
-		// YUL_: When creating a comment or other polygon, WME will automatically do this, but since we are modifying an existing Map Comment, we must do it here!
-		if (s==0) {
-			conversion.points.push(conversion.points[0]);
-			// YUL_: At this point we have the shape we need, and have to convert the existing map comment into that shape.
-			console.log("WME Map Comment polygon: done");
-		}
-
-		const polygon = new OpenLayers.Geometry.Polygon(
-			new OpenLayers.Geometry.LinearRing(conversion.points),
-		);
-		return W.userscripts.toGeoJSONGeometry(polygon);
+	/**
+	 * Converts a GeoJSON geometry (usually a LineString) to a Landmark (Polygon) geometry.
+	 * @param geometry The GeoJSON geometry to convert.
+	 * @param width The width (in meters) of the landmark.
+	 */
+	function convertToLandmark(geometry, width = TheCommentWidth) {
+		return turf.buffer(
+			geometry,
+			width / 2,
+			{ units: 'meters' },
+		).geometry;
   }
-
-	function getEquation(segment) {
-		if (segment.x2 == segment.x1) {
-			return { 'x': segment.x1 };
-		}
-
-		var slope = (segment.y2 - segment.y1) / (segment.x2 - segment.x1);
-		var offset = segment.y1 - (slope * segment.x1);
-		return { 'slope': slope, 'offset': offset };
-	}
-
-	// line A: y = ax + b
-	// line B: y = cx + b
-	// x = (d - b) / (a - c)
-	function intersectX(eqa,eqb,defaultPoint) {
-		if ("number" == typeof eqa.slope && "number" == typeof eqb.slope) {
-			if (eqa.slope == eqb.slope) {
-				return null;
-			}
-
-			var ix = (eqb.offset - eqa.offset) / (eqa.slope - eqb.slope);
-			var iy = eqa.slope * ix + eqa.offset;
-			return new OpenLayers.Geometry.Point(ix, iy);
-		}
-		else if ("number" == typeof eqa.x) {
-			return new OpenLayers.Geometry.Point(eqa.x, eqb.slope * eqa.x + eqb.offset);
-		}
-		else if ("number" == typeof eqb.y) {
-			return new OpenLayers.Geometry.Point(eqb.x, eqa.slope * eqb.x + eqa.offset);
-		}
-		return null;
-	}
-
-	function getStreet(segment) {
-		if (!segment.attributes.primaryStreetID) {
-			return null;
-		}
-		var street = segment.model.streets.get(segment.attributes.primaryStreetID);
-		return street;
-	}
 
 	// 2013-06-09: Save current comment Width
 	function setlastCommentWidth(CommentWidth){
