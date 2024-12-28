@@ -87,37 +87,149 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			const mainDiv = $('<div class="form-group"/>');
 			const controlsDiv = $('<div class="controls"/>');
 
-			controlsDiv.append($('<label class="camers-creator-label control-label">Cameras</label>'));
-			const joystickContainer = $('<div style="display: flex; flex-direction: column; align-items: center;"/>');
-			joystickContainer.append($('<button id="UCamera" class="waze-btn UCameraButton" type="button" style="margin-bottom: 5px;">Up</button>'));
-			
-			const middleRow = $('<div style="display: flex; gap: 1em;"/>');
-			middleRow.append($('<button id="LCamera" class="waze-btn LCameraButton" type="button">Left</button>'));
-			middleRow.append($('<button id="RCamera" class="waze-btn RCameraButton" type="button">Right</button>'));
-			joystickContainer.append(middleRow);
-			
-			joystickContainer.append($('<button id="DCamera" class="waze-btn DCameraButton" type="button" style="margin-top: 5px;">Down</button>'));
-			controlsDiv.append(joystickContainer);
+			const createJoystick = (areas, buttons) => {
+				const unassignedAreas = new Set(areas.flat());
+				const maxControlsInRow = areas.reduce((currentMax, row) => Math.max(currentMax, row.length), 0);
+				const cssAreas = areas.map((row) => {
+					if (row.length === maxControlsInRow) return `"${row.join(' ')}" 1fr`;
 
-			controlsDiv.append($('<label class="camers-creator-label control-label">Arrows</label>'));
-			const arrowContainer = $('<div style="display: flex; gap: 1em; justify-content: center;"/>');
-			arrowContainer.append($('<button id="LArrow" class="waze-btn LArrowButton" type="button">Left</button>'));
-			arrowContainer.append($('<button id="LArrow" class="waze-btn SArrowButton" type="button">Straight</button>'));
-			arrowContainer.append($('<button id="RArrow" class="waze-btn RArrowButton" type="button">Right</button>'));
-			controlsDiv.append(arrowContainer);
+					const singleAreaUnits = Math.floor(maxControlsInRow / row.length);
+					const availableUnits = maxControlsInRow - (singleAreaUnits * row.length);
+
+					return row.reduce((result, currentArea, currentAreaIndex, areas) => {
+						const isLastArea = currentAreaIndex + 1 >= areas.length;
+						const insert = (times) => {
+							for (let i = 0; i < times; i++) result.push(currentArea);
+						}
+
+						insert(singleAreaUnits);
+						if (isLastArea) insert(availableUnits);
+
+						return `"${result.join(' ')}" 1fr`;
+					}, []);
+				}).join(' ');
+
+				const joystickContainer = $('<div style="display: grid; align-items: center;"/>');
+				joystickContainer.css('grid-template', cssAreas);
+
+				const buttonElements = {};
+				buttons.forEach((button) => {
+					const { name, icon, handler, isSelectable = true, flipIconVertically = false } = button;
+					if (!unassignedAreas.has(name)) return;
+					unassignedAreas.delete(name);
+
+					const $icon = $(`<i class="w-icon w-icon-${icon}" />`);
+					if (flipIconVertically) $icon.css('transform', 'rotateX(180deg)');
+
+					const $btn = $('<wz-button color="clear-icon" size="sm" />');
+					$btn.css('grid-area', name);
+					if (!isSelectable) {
+						$btn.attr('disabled', true);
+						$icon.css('color', '#000');
+					}
+					$btn.append($icon);
+					$btn.click((e) => e.target.blur());
+					if (handler) $btn.click(handler);
+					joystickContainer.append($btn);
+					buttonElements[name] = $btn;
+				});
+
+				Array.from(unassignedAreas.values()).forEach((area) => {
+					const $dummy = $('<div />');
+					$dummy.css('grid-area', area);
+					joystickContainer.append($dummy);
+				})
+
+				return {
+					root: joystickContainer,
+					buttons: buttonElements,
+				};
+			};
+
+			const DPAD_AREA = {
+				Up: 'up',
+				Left: 'left',
+				Right: 'right',
+				Down: 'down',
+			};
+			const DPAD_NAV_ICONS = {
+				[DPAD_AREA.Up]: 'arrow-up',
+				[DPAD_AREA.Down]: 'arrow-down',
+				[DPAD_AREA.Left]: 'arrow-left',
+				[DPAD_AREA.Right]: 'arrow-right',
+			}
+			const createDPadJoystick = (buttons, dpadIcon, size = '100%') => {
+				if (buttons.length !== 4) throw new Error('There must be exactly 4 buttons in a D-Pad');
+
+				buttons.forEach((button) => {
+					button.icon = button.icon || DPAD_NAV_ICONS[button.name];
+				});
+
+				const { root, buttons: buttonElements } = createJoystick([
+					[DPAD_AREA.Up],
+					[DPAD_AREA.Left, 'icon', DPAD_AREA.Right],
+					[DPAD_AREA.Down],
+				], [
+					...buttons,
+					dpadIcon && { name: 'icon', icon: dpadIcon, isSelectable: false },
+				].filter(Boolean));
+
+				Object.entries(buttonElements).forEach(([btnName, $btn]) => {
+					if (!Object.values(DPAD_AREA).includes(btnName)) return;
+
+					$btn.css('justify-self', 'center');
+					$btn.css('width', 'fit-content');
+				})
+
+				root.css('aspect-ratio', '1');
+				root.css('max-width', size);
+				root.css('background-color', 'var(--surface_default)');
+				root.css('border-radius', '50%');
+				root.css('overflow', 'hidden');
+				return root;
+			}
+
+			const createDPadControl = (controlName, buttons, dpadIcon, size = '100%') => {
+				const $container = $('<div style="flex: 1" />');
+				$container.append($(`<wz-label style="text-align: center">${controlName}</wz-label>`));
+				$container.append(createDPadJoystick(
+					buttons,
+					dpadIcon,
+					size
+				));
+				return $container;
+			}
+
+			const joysticksContainers = $('<div class="form-group" style="display: flex; gap: 12px" />');
+			joysticksContainers.append(
+				createDPadControl(
+					'Cameras',
+					[
+						{ name: DPAD_AREA.Up, handler: createUCamera },
+						{ name: DPAD_AREA.Down, handler: createDCamera },
+						{ name: DPAD_AREA.Left, handler: createLCamera },
+						{ name: DPAD_AREA.Right, handler: createRCamera },
+					],
+					'speed-camera',
+				),
+			);
+			joysticksContainers.append(
+				createDPadControl(
+					'Arrows',
+					[
+						{ name: DPAD_AREA.Up, handler: createSArrow },
+						{ name: 'DUMMY', handler: () => null, isSelectable: false, },
+						{ name: DPAD_AREA.Left, icon: 'turn-left', handler: createLArrow },
+						{ name: DPAD_AREA.Right, icon: 'turn-right', handler: createRArrow },
+					],
+				),
+			);
+
+			controlsDiv.append(joysticksContainers);
 
 			mainDiv.append(controlsDiv);
 			regionDiv.append(mainDiv);
 			lockRegion.before(regionDiv);
-
-			$('.LCameraButton').on('click', createLCamera);
-			$('.UCameraButton').on('click', createUCamera);
-			$('.RCameraButton').on('click', createRCamera);
-			$('.DCameraButton').on('click', createDCamera);
-
-			$('.LArrowButton').on('click', createLArrow);
-			$('.SArrowButton').on('click', createSArrow);
-			$('.RArrowButton').on('click', createRArrow);
 		}
 	}
 
