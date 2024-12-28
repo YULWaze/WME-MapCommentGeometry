@@ -10,7 +10,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.10.24.02
+// @version 		2024.12.28.01	
 // ==/UserScript==
 
 /* global W */
@@ -26,6 +26,7 @@
 // Thanks to MapOMatic for fixing WME Wazer Creater
 // Thanks to DeviateFromThePlan for cleaning up the code
 // Thanks to LihtsaltMats for suggesting cleaner placement for the buttons and implementing that
+// Thanks to r0den for allowing the note to be created directly on the segment and cleaning up the code
 
 // Instructions
 // 1) install this script in Tampermonkey
