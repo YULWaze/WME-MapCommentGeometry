@@ -207,49 +207,33 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		catch(e) { }
 
 		// Add button
-		const createMapNoteBtn = $('<button class="btn btn-primary" title="' + getString(idTitle) + '">' + getString(idMapCommentGeo) + '</button>');
+		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idMapCommentGeo)}</wz-button>`);
+		createMapNoteBtn.click((e) => e.target.blur());
 		createMapNoteBtn.click(doMapComment);
 
 		// Add dropdown for comment width
-		const selCommentWidth = $('<select id="CommentWidth" data-type="numeric" class="form-control" />');
-		selCommentWidth.append( $('<option value="5">5</option>') );
-		selCommentWidth.append( $('<option value="10">10</option>') );
-		selCommentWidth.append( $('<option value="15">15</option>') );
-		selCommentWidth.append( $('<option value="20">20</option>') );
-		selCommentWidth.append( $('<option value="25">25</option>') );
+		const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
+		selCommentWidth.append( $('<wz-option value="5">5 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="10">10 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="15">15 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="20">20 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="25">25 m</wz-option>') );
+		selCommentWidth.attr('value', getLastCommentWidth(DefaultCommentWidth));
 
 		// Add MapCommentGeo section
 		const rootContainer = $('<section id="MapCommentGeo" />');
+		rootContainer.append($('<div class="form-group" />')); // add an empty form group just for the margin above
 
 		// Add comment width to section
-		const row1Container = $('<div class="form-group" />');
-		row1Container.append( $('<label class="col-xs-4">Width:</label>') );
-		const row1ControlsContainer = $('<div class="col-xs-8 controls" />');
-		row1ControlsContainer.append(selCommentWidth);
-		row1Container.append(row1ControlsContainer);
-		rootContainer.append(row1Container);
-
-		const row2Container = $('<div class="form-group"/>');
-		row2Container.append( $('<label class="col-xs-4">&nbsp;</label>') );
-		const row2ControlsContainer = $('<div class="col-xs-8 controls" />');
-		row2ControlsContainer.append(createMapNoteBtn);
-		row2Container.append(row2ControlsContainer);
-		rootContainer.append(row2Container);
+		const mapNoteWidthContainer = $('<div class="form-group" />');
+		mapNoteWidthContainer.append( $('<wz-label>Map Note Width</wz-label>') );
+		const mapNoteWidthControls = $('<div style="display: flex; gap: 12px;" />');
+		mapNoteWidthControls.append(selCommentWidth);
+		mapNoteWidthControls.append(createMapNoteBtn);
+		mapNoteWidthContainer.append(mapNoteWidthControls);
+		rootContainer.append(mapNoteWidthContainer);
 
 		$("#segment-edit-general").append(rootContainer);
-
-		// Select last comment width
-		var lastCommentWidth = getLastCommentWidth(DefaultCommentWidth);
-		console.log("Last comment width: " + lastCommentWidth);
-		selCommentWidth = document.getElementById('CommentWidth');
-		if(selCommentWidth!==null){
-			for(var i=0; i < selCommentWidth.options.length; i++){
-				if(selCommentWidth.options[i].value == lastCommentWidth){
-					selCommentWidth.selectedIndex = i;
-					break;
-				}
-			}
-		}
 
 		WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_NOTES, '');
 
@@ -276,7 +260,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function doMapComment(ev) {
 		// 2013-10-20: Get comment width
 		const selCommentWidth = document.getElementById('CommentWidth');
-		const width = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value, 10);
+		const width = parseInt(selCommentWidth.value, 10);
 
 		setlastCommentWidth(width);
 
