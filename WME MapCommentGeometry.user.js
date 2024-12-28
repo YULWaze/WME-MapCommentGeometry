@@ -87,37 +87,149 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			const mainDiv = $('<div class="form-group"/>');
 			const controlsDiv = $('<div class="controls"/>');
 
-			controlsDiv.append($('<label class="camers-creator-label control-label">Cameras</label>'));
-			const joystickContainer = $('<div style="display: flex; flex-direction: column; align-items: center;"/>');
-			joystickContainer.append($('<button id="UCamera" class="waze-btn UCameraButton" type="button" style="margin-bottom: 5px;">Up</button>'));
-			
-			const middleRow = $('<div style="display: flex; gap: 1em;"/>');
-			middleRow.append($('<button id="LCamera" class="waze-btn LCameraButton" type="button">Left</button>'));
-			middleRow.append($('<button id="RCamera" class="waze-btn RCameraButton" type="button">Right</button>'));
-			joystickContainer.append(middleRow);
-			
-			joystickContainer.append($('<button id="DCamera" class="waze-btn DCameraButton" type="button" style="margin-top: 5px;">Down</button>'));
-			controlsDiv.append(joystickContainer);
+			const createJoystick = (areas, buttons) => {
+				const unassignedAreas = new Set(areas.flat());
+				const maxControlsInRow = areas.reduce((currentMax, row) => Math.max(currentMax, row.length), 0);
+				const cssAreas = areas.map((row) => {
+					if (row.length === maxControlsInRow) return `"${row.join(' ')}" 1fr`;
 
-			controlsDiv.append($('<label class="camers-creator-label control-label">Arrows</label>'));
-			const arrowContainer = $('<div style="display: flex; gap: 1em; justify-content: center;"/>');
-			arrowContainer.append($('<button id="LArrow" class="waze-btn LArrowButton" type="button">Left</button>'));
-			arrowContainer.append($('<button id="LArrow" class="waze-btn SArrowButton" type="button">Straight</button>'));
-			arrowContainer.append($('<button id="RArrow" class="waze-btn RArrowButton" type="button">Right</button>'));
-			controlsDiv.append(arrowContainer);
+					const singleAreaUnits = Math.floor(maxControlsInRow / row.length);
+					const availableUnits = maxControlsInRow - (singleAreaUnits * row.length);
+
+					return row.reduce((result, currentArea, currentAreaIndex, areas) => {
+						const isLastArea = currentAreaIndex + 1 >= areas.length;
+						const insert = (times) => {
+							for (let i = 0; i < times; i++) result.push(currentArea);
+						}
+
+						insert(singleAreaUnits);
+						if (isLastArea) insert(availableUnits);
+
+						return `"${result.join(' ')}" 1fr`;
+					}, []);
+				}).join(' ');
+
+				const joystickContainer = $('<div style="display: grid; align-items: center;"/>');
+				joystickContainer.css('grid-template', cssAreas);
+
+				const buttonElements = {};
+				buttons.forEach((button) => {
+					const { name, icon, handler, isSelectable = true, flipIconVertically = false } = button;
+					if (!unassignedAreas.has(name)) return;
+					unassignedAreas.delete(name);
+
+					const $icon = $(`<i class="w-icon w-icon-${icon}" />`);
+					if (flipIconVertically) $icon.css('transform', 'rotateX(180deg)');
+
+					const $btn = $('<wz-button color="clear-icon" size="sm" />');
+					$btn.css('grid-area', name);
+					if (!isSelectable) {
+						$btn.attr('disabled', true);
+						$icon.css('color', '#000');
+					}
+					$btn.append($icon);
+					$btn.click((e) => e.target.blur());
+					if (handler) $btn.click(handler);
+					joystickContainer.append($btn);
+					buttonElements[name] = $btn;
+				});
+
+				Array.from(unassignedAreas.values()).forEach((area) => {
+					const $dummy = $('<div />');
+					$dummy.css('grid-area', area);
+					joystickContainer.append($dummy);
+				})
+
+				return {
+					root: joystickContainer,
+					buttons: buttonElements,
+				};
+			};
+
+			const DPAD_AREA = {
+				Up: 'up',
+				Left: 'left',
+				Right: 'right',
+				Down: 'down',
+			};
+			const DPAD_NAV_ICONS = {
+				[DPAD_AREA.Up]: 'arrow-up',
+				[DPAD_AREA.Down]: 'arrow-down',
+				[DPAD_AREA.Left]: 'arrow-left',
+				[DPAD_AREA.Right]: 'arrow-right',
+			}
+			const createDPadJoystick = (buttons, dpadIcon, size = '100%') => {
+				if (buttons.length !== 4) throw new Error('There must be exactly 4 buttons in a D-Pad');
+
+				buttons.forEach((button) => {
+					button.icon = button.icon || DPAD_NAV_ICONS[button.name];
+				});
+
+				const { root, buttons: buttonElements } = createJoystick([
+					[DPAD_AREA.Up],
+					[DPAD_AREA.Left, 'icon', DPAD_AREA.Right],
+					[DPAD_AREA.Down],
+				], [
+					...buttons,
+					dpadIcon && { name: 'icon', icon: dpadIcon, isSelectable: false },
+				].filter(Boolean));
+
+				Object.entries(buttonElements).forEach(([btnName, $btn]) => {
+					if (!Object.values(DPAD_AREA).includes(btnName)) return;
+
+					$btn.css('justify-self', 'center');
+					$btn.css('width', 'fit-content');
+				})
+
+				root.css('aspect-ratio', '1');
+				root.css('max-width', size);
+				root.css('background-color', 'var(--surface_default)');
+				root.css('border-radius', '50%');
+				root.css('overflow', 'hidden');
+				return root;
+			}
+
+			const createDPadControl = (controlName, buttons, dpadIcon, size = '100%') => {
+				const $container = $('<div style="flex: 1" />');
+				$container.append($(`<wz-label style="text-align: center">${controlName}</wz-label>`));
+				$container.append(createDPadJoystick(
+					buttons,
+					dpadIcon,
+					size
+				));
+				return $container;
+			}
+
+			const joysticksContainers = $('<div class="form-group" style="display: flex; gap: 12px" />');
+			joysticksContainers.append(
+				createDPadControl(
+					'Cameras',
+					[
+						{ name: DPAD_AREA.Up, handler: createUCamera },
+						{ name: DPAD_AREA.Down, handler: createDCamera },
+						{ name: DPAD_AREA.Left, handler: createLCamera },
+						{ name: DPAD_AREA.Right, handler: createRCamera },
+					],
+					'speed-camera',
+				),
+			);
+			joysticksContainers.append(
+				createDPadControl(
+					'Arrows',
+					[
+						{ name: DPAD_AREA.Up, handler: createSArrow },
+						{ name: 'DUMMY', handler: () => null, isSelectable: false, },
+						{ name: DPAD_AREA.Left, icon: 'turn-left', handler: createLArrow },
+						{ name: DPAD_AREA.Right, icon: 'turn-right', handler: createRArrow },
+					],
+				),
+			);
+
+			controlsDiv.append(joysticksContainers);
 
 			mainDiv.append(controlsDiv);
 			regionDiv.append(mainDiv);
 			lockRegion.before(regionDiv);
-
-			$('.LCameraButton').on('click', createLCamera);
-			$('.UCameraButton').on('click', createUCamera);
-			$('.RCameraButton').on('click', createRCamera);
-			$('.DCameraButton').on('click', createDCamera);
-
-			$('.LArrowButton').on('click', createLArrow);
-			$('.SArrowButton').on('click', createSArrow);
-			$('.RArrowButton').on('click', createRArrow);
 		}
 	}
 
@@ -207,51 +319,33 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		catch(e) { }
 
 		// Add button
-		var btn1 = $('<button class="btn btn-primary" title="' + getString(idTitle) + '">' + getString(idMapCommentGeo) + '</button>');
-		btn1.click(doMapComment);
+		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idMapCommentGeo)}</wz-button>`);
+		createMapNoteBtn.click((e) => e.target.blur());
+		createMapNoteBtn.click(doMapComment);
 
 		// Add dropdown for comment width
-		var selCommentWidth = $('<select id="CommentWidth" data-type="numeric" class="form-control" />');
-		selCommentWidth.append( $('<option value="5">5</option>') );
-		selCommentWidth.append( $('<option value="10">10</option>') );
-		selCommentWidth.append( $('<option value="15">15</option>') );
-		selCommentWidth.append( $('<option value="20">20</option>') );
-		selCommentWidth.append( $('<option value="25">25</option>') );
+		const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
+		selCommentWidth.append( $('<wz-option value="5">5 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="10">10 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="15">15 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="20">20 m</wz-option>') );
+		selCommentWidth.append( $('<wz-option value="25">25 m</wz-option>') );
+		selCommentWidth.attr('value', getLastCommentWidth(DefaultCommentWidth));
 
 		// Add MapCommentGeo section
-		var cnt = $('<section id="MapCommentGeo" />');
+		const rootContainer = $('<section id="MapCommentGeo" />');
+		rootContainer.append($('<div class="form-group" />')); // add an empty form group just for the margin above
 
 		// Add comment width to section
-		var divGroup1 = $('<div class="form-group" />');
-		divGroup1.append( $('<label class="col-xs-4">Width:</label>') );
-		var divControls1 = $('<div class="col-xs-8 controls" />');
-		divControls1.append(selCommentWidth);
-//		divControls1.append(chk);
-		divGroup1.append(divControls1);
-		cnt.append(divGroup1);
+		const mapNoteWidthContainer = $('<div class="form-group" />');
+		mapNoteWidthContainer.append( $('<wz-label>Map Note Width</wz-label>') );
+		const mapNoteWidthControls = $('<div style="display: flex; gap: 12px;" />');
+		mapNoteWidthControls.append(selCommentWidth);
+		mapNoteWidthControls.append(createMapNoteBtn);
+		mapNoteWidthContainer.append(mapNoteWidthControls);
+		rootContainer.append(mapNoteWidthContainer);
 
-		// Add button
-		var divGroup2 = $('<div class="form-group"/>');
-		divGroup2.append( $('<label class="col-xs-4">&nbsp;</label>') );
-		var divControls2 = $('<div class="col-xs-8 controls" />');
-		divControls2.append(btn1);
-		divGroup2.append(divControls2);
-		cnt.append(divGroup2);
-
-		$("#segment-edit-general").append(cnt);
-
-		// Select last comment width
-		var lastCommentWidth = getLastCommentWidth(DefaultCommentWidth);
-		console.log("Last comment width: " + lastCommentWidth);
-		selCommentWidth = document.getElementById('CommentWidth');
-		if(selCommentWidth!==null){
-			for(var i=0; i < selCommentWidth.options.length; i++){
-				if(selCommentWidth.options[i].value == lastCommentWidth){
-					selCommentWidth.selectedIndex = i;
-					break;
-				}
-			}
-		}
+		$("#segment-edit-general").append(rootContainer);
 
 		WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_NOTES, '');
 
@@ -278,7 +372,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function doMapComment(ev) {
 		// 2013-10-20: Get comment width
 		const selCommentWidth = document.getElementById('CommentWidth');
-		const width = parseInt(selCommentWidth.options[selCommentWidth.selectedIndex].value, 10);
+		const width = parseInt(selCommentWidth.value, 10);
 
 		setlastCommentWidth(width);
 
