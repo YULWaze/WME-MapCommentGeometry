@@ -149,15 +149,17 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				Left: 'left',
 				Right: 'right',
 				Down: 'down',
+				Middle: 'middle',
 			};
 			const DPAD_NAV_ICONS = {
 				[DPAD_AREA.Up]: 'arrow-up',
 				[DPAD_AREA.Down]: 'arrow-down',
 				[DPAD_AREA.Left]: 'arrow-left',
 				[DPAD_AREA.Right]: 'arrow-right',
+				[DPAD_AREA.Middle]: 'recenter',
 			}
-			const createDPadJoystick = (buttons, dpadIcon, size = '100%') => {
-				if (buttons.length !== 4) throw new Error('There must be exactly 4 buttons in a D-Pad');
+			const createDPadJoystick = (buttons, size = '100%') => {
+				if (buttons.length < 4 || buttons.length > 5) throw new Error('There must be 4 or 5 buttons in a D-Pad');
 
 				buttons.forEach((button) => {
 					button.icon = button.icon || DPAD_NAV_ICONS[button.name];
@@ -165,12 +167,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 				const { root, buttons: buttonElements } = createJoystick([
 					[DPAD_AREA.Up],
-					[DPAD_AREA.Left, 'icon', DPAD_AREA.Right],
+					[DPAD_AREA.Left, DPAD_AREA.Middle, DPAD_AREA.Right],
 					[DPAD_AREA.Down],
-				], [
-					...buttons,
-					dpadIcon && { name: 'icon', icon: dpadIcon, isSelectable: false },
-				].filter(Boolean));
+				], buttons);
 
 				Object.entries(buttonElements).forEach(([btnName, $btn]) => {
 					if (!Object.values(DPAD_AREA).includes(btnName)) return;
@@ -187,12 +186,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				return root;
 			}
 
-			const createDPadControl = (controlName, buttons, dpadIcon, size = '100%') => {
+			const createDPadControl = (controlName, buttons, size = '100%') => {
 				const $container = $('<div style="flex: 1" />');
 				$container.append($(`<wz-label style="text-align: center">${controlName}</wz-label>`));
 				$container.append(createDPadJoystick(
 					buttons,
-					dpadIcon,
 					size
 				));
 				return $container;
@@ -207,8 +205,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 						{ name: DPAD_AREA.Down, handler: createDCamera },
 						{ name: DPAD_AREA.Left, handler: createLCamera },
 						{ name: DPAD_AREA.Right, handler: createRCamera },
+						{ name: DPAD_AREA.Middle, handler: () => null, isSelectable: false, icon: 'speed-camera' },
 					],
-					'speed-camera',
 				),
 			);
 			joysticksContainers.append(
@@ -219,6 +217,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 						{ name: 'DUMMY', handler: () => null, isSelectable: false, },
 						{ name: DPAD_AREA.Left, icon: 'turn-left', handler: createLArrow },
 						{ name: DPAD_AREA.Right, icon: 'turn-right', handler: createRArrow },
+						{ name: DPAD_AREA.Middle, icon: 'pencil', handler: createCustomArrow },
 					],
 				),
 			);
@@ -263,6 +262,56 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return null;
 	}
 
+	function convertLineToArrow(line) {
+		const lastPoint = line.coordinates[line.coordinates.length - 1];
+		const secondLastPoint = line.coordinates[line.coordinates.length - 2];
+		const direction = turf.bearing(
+			turf.point(secondLastPoint),
+			turf.point(lastPoint),
+		);
+
+		const arrowSize = 10; // Arrow size in meters
+		const leftWing = turf.destination(
+			turf.point(lastPoint),
+			arrowSize,
+			direction + 90,
+			{ units: 'meters' },
+		);
+		const rightWing = turf.destination(
+			turf.point(lastPoint),
+			arrowSize,
+			direction - 90,
+			{ units: 'meters' },
+		);
+
+		const surroundedLine = turf.buffer(
+			line,
+			arrowSize / 3,
+			{ units: 'meters', steps: 4 },
+		);
+
+		const arrowHead = turf.polygon([[
+			lastPoint,
+			leftWing.geometry.coordinates,
+			turf.destination(
+				turf.point(lastPoint),
+				arrowSize,
+				direction,
+				{ units: 'meters' },
+			).geometry.coordinates,
+			rightWing.geometry.coordinates,
+			lastPoint,
+		]]);
+
+		return turf.union(
+			turf.featureCollection([
+				surroundedLine,
+				arrowHead,
+			]),
+		).geometry;
+	}
+
+
 	function createLCamera(){ updateCommentGeometry(getShapeWKT(CameraLeftPoints)); }
 	function createUCamera(){ updateCommentGeometry(getShapeWKT(CameraUpPoints)); }
 	function createRCamera(){ updateCommentGeometry(getShapeWKT(CameraRightPoints)); }
@@ -271,6 +320,12 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function createLArrow(){ updateCommentGeometry(getShapeWKT(ArrowLeftPoints)); }
     function createSArrow(){ updateCommentGeometry(getShapeWKT(ArrowStraightPoints)); }
 	function createRArrow(){ updateCommentGeometry(getShapeWKT(ArrowRightPoints)); }
+	async function createCustomArrow() {
+		const drawnLine = await wmeSdk.Map.drawLine();
+		const curvedLine = turf.bezierSpline(drawnLine, { sharpness: 0.1 }).geometry;
+		const arrowGeometry = convertLineToArrow(curvedLine);
+		updateCommentGeometry(arrowGeometry);
+	}
 
 	function getShapeWKT(points, center){
 		if (!center) {
