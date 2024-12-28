@@ -207,11 +207,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		catch(e) { }
 
 		// Add button
-		var btn1 = $('<button class="btn btn-primary" title="' + getString(idTitle) + '">' + getString(idMapCommentGeo) + '</button>');
-		btn1.click(doMapComment);
+		const createMapNoteBtn = $('<button class="btn btn-primary" title="' + getString(idTitle) + '">' + getString(idMapCommentGeo) + '</button>');
+		createMapNoteBtn.click(doMapComment);
 
 		// Add dropdown for comment width
-		var selCommentWidth = $('<select id="CommentWidth" data-type="numeric" class="form-control" />');
+		const selCommentWidth = $('<select id="CommentWidth" data-type="numeric" class="form-control" />');
 		selCommentWidth.append( $('<option value="5">5</option>') );
 		selCommentWidth.append( $('<option value="10">10</option>') );
 		selCommentWidth.append( $('<option value="15">15</option>') );
@@ -219,26 +219,24 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		selCommentWidth.append( $('<option value="25">25</option>') );
 
 		// Add MapCommentGeo section
-		var cnt = $('<section id="MapCommentGeo" />');
+		const rootContainer = $('<section id="MapCommentGeo" />');
 
 		// Add comment width to section
-		var divGroup1 = $('<div class="form-group" />');
-		divGroup1.append( $('<label class="col-xs-4">Width:</label>') );
-		var divControls1 = $('<div class="col-xs-8 controls" />');
-		divControls1.append(selCommentWidth);
-//		divControls1.append(chk);
-		divGroup1.append(divControls1);
-		cnt.append(divGroup1);
+		const row1Container = $('<div class="form-group" />');
+		row1Container.append( $('<label class="col-xs-4">Width:</label>') );
+		const row1ControlsContainer = $('<div class="col-xs-8 controls" />');
+		row1ControlsContainer.append(selCommentWidth);
+		row1Container.append(row1ControlsContainer);
+		rootContainer.append(row1Container);
 
-		// Add button
-		var divGroup2 = $('<div class="form-group"/>');
-		divGroup2.append( $('<label class="col-xs-4">&nbsp;</label>') );
-		var divControls2 = $('<div class="col-xs-8 controls" />');
-		divControls2.append(btn1);
-		divGroup2.append(divControls2);
-		cnt.append(divGroup2);
+		const row2Container = $('<div class="form-group"/>');
+		row2Container.append( $('<label class="col-xs-4">&nbsp;</label>') );
+		const row2ControlsContainer = $('<div class="col-xs-8 controls" />');
+		row2ControlsContainer.append(createMapNoteBtn);
+		row2Container.append(row2ControlsContainer);
+		rootContainer.append(row2Container);
 
-		$("#segment-edit-general").append(cnt);
+		$("#segment-edit-general").append(rootContainer);
 
 		// Select last comment width
 		var lastCommentWidth = getLastCommentWidth(DefaultCommentWidth);
