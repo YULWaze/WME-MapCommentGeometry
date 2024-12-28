@@ -51,12 +51,15 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 - Feedback:
 */
 
-(function() {
+(async function() {
+	await SDK_INITIALIZED;
 	const UPDATE_NOTES = 'Added ability to create map comment shapes';
 	const SCRIPT_NAME = GM_info.script.name;
 	const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
-	const idMapCommentGeo = 1;
+	const idNewMapComment = 1;
+	const idExistingMapComment = 2;
+	const wmeSdk = getWmeSdk({ scriptId: 'wme-map-comment-geometry', scriptName: 'WME Map Comment Geometry' });
 
 	const CameraLeftPoints = [[11,6],[-4,6],[-4,3],[-11,6],[-11,-6],[-4,-3],[-4,-6],[11,-6]];
 	const CameraRightPoints = [[-11,6],[4,6],[4,3],[11,6],[11,-6],[4,-3],[4,-6],[-11,-6]];
@@ -249,37 +252,57 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return mapComment;
 	}
 
-	function updateCommentGeometry(points){
-		if (WazeWrap.hasMapCommentSelected())
-		{
-			let model = WazeWrap.getSelectedDataModelObjects()[0];
-
-			center = model.getOLGeometry().getCentroid();
-
-			let newerGeo = getShapeWKT(points);
-			newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
-			let UO = require("Waze/Action/UpdateObject");
-			W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
+	function updateCommentGeometry(points, mapComment) {
+		if (!mapComment) {
+			if (!WazeWrap.hasMapCommentSelected()) return;
+			mapComment = WazeWrap.getSelectedDataModelObjects()[0];
 		}
+
+		const polygon = new OpenLayers.Geometry.Polygon(
+			new OpenLayers.Geometry.LinearRing(points),
+		);
+
+		const geoJSONGeometry = W.userscripts.toGeoJSONGeometry(polygon);
+		let UO = require("Waze/Action/UpdateObject");
+		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry }));
 	}
 
-	function createLCamera(){ updateCommentGeometry(CameraLeftPoints); }
-	function createUCamera(){ updateCommentGeometry(CameraUpPoints); }
-	function createRCamera(){ updateCommentGeometry(CameraRightPoints); }
-	function createDCamera(){ updateCommentGeometry(CameraDownPoints); }
+	async function waitForMapCommentSelection() {
+		if (WazeWrap.hasMapCommentSelected())
+			return WazeWrap.getSelectedDataModelObjects()[0];
 
-	function createLArrow(){ updateCommentGeometry(ArrowLeftPoints); }
-    function createSArrow(){ updateCommentGeometry(ArrowStraightPoints); }
-	function createRArrow(){ updateCommentGeometry(ArrowRightPoints); }
+		await wmeSdk.Events.once({
+			eventName: 'wme-selection-changed',
+		});
 
-	function getShapeWKT(points){
+		if (WazeWrap.hasMapCommentSelected())
+			return WazeWrap.getSelectedDataModelObjects()[0];
+		return null;
+	}
+
+	function createLCamera(){ updateCommentGeometry(getShapeWKT(CameraLeftPoints)); }
+	function createUCamera(){ updateCommentGeometry(getShapeWKT(CameraUpPoints)); }
+	function createRCamera(){ updateCommentGeometry(getShapeWKT(CameraRightPoints)); }
+	function createDCamera(){ updateCommentGeometry(getShapeWKT(CameraDownPoints)); }
+
+	function createLArrow(){ updateCommentGeometry(getShapeWKT(ArrowLeftPoints)); }
+    function createSArrow(){ updateCommentGeometry(getShapeWKT(ArrowStraightPoints)); }
+	function createRArrow(){ updateCommentGeometry(getShapeWKT(ArrowRightPoints)); }
+
+	function getShapeWKT(points, center){
+		if (!center) {
+			if (!WazeWrap.hasMapCommentSelected()) throw new Error('No map comment selected and no center provided');
+			const mapComment = WazeWrap.getSelectedDataModelObjects()[0];
+			center = mapComment.getOLGeometry().getCentroid();
+		}
+
 		let wktText = 'POLYGON((';
 		for (let i=0; i < points.length; i++){
 			wktText += `${center.x + points[i][0]} ${center.y + points[i][1]},`;
 		}
 		wktText = wktText.slice(0, -1)
 		wktText += '))';
-		return OpenLayers.Geometry.fromWKT(wktText);
+		return OpenLayers.Geometry.fromWKT(wktText).getVertices();
 	}
 
 	function WMEMapCommentGeometry_bootstrap() {
@@ -319,9 +342,26 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		catch(e) { }
 
 		// Add button
-		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idMapCommentGeo)}</wz-button>`);
-		createMapNoteBtn.click((e) => e.target.blur());
-		createMapNoteBtn.click(doMapComment);
+		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idNewMapComment)}</wz-button>`);
+		createMapNoteBtn.click((e) => {
+			e.target.blur();
+			createComment(getGeometryOfSelection()).then((mapComment) => {
+				W.selectionManager.unselectAll();
+				W.selectionManager.selectFeatures([mapComment.getID()]);
+			});
+		});
+
+		const useMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idExistingMapComment)}</wz-button>`);
+		useMapNoteBtn.click(async (e) => {
+			e.target.blur();
+			e.target.disabled = true;
+			const selectionGeometry = getGeometryOfSelection();
+			WazeWrap.Alerts.info('WME Map Comment Geometry', 'Select an existing map comment to update its geometry');
+			const mapComment = await waitForMapCommentSelection();
+			useMapNoteBtn.disabled = false;
+			if (!mapComment) return;
+			updateCommentGeometry(selectionGeometry, mapComment);
+		});
 
 		// Add dropdown for comment width
 		const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
@@ -331,6 +371,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		selCommentWidth.append( $('<wz-option value="20">20 m</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="25">25 m</wz-option>') );
 		selCommentWidth.attr('value', getLastCommentWidth(DefaultCommentWidth));
+		const selCommentWidthStyles = new CSSStyleSheet();
+		selCommentWidthStyles.replaceSync('.wz-select { min-width: initial !important }');
+		selCommentWidth[0].shadowRoot.adoptedStyleSheets.push(selCommentWidthStyles);
 
 		// Add MapCommentGeo section
 		const rootContainer = $('<section id="MapCommentGeo" />');
@@ -341,7 +384,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		mapNoteWidthContainer.append( $('<wz-label>Map Note Width</wz-label>') );
 		const mapNoteWidthControls = $('<div style="display: flex; gap: 12px;" />');
 		mapNoteWidthControls.append(selCommentWidth);
-		mapNoteWidthControls.append(createMapNoteBtn);
+		mapNoteWidthControls.append(createMapNoteBtn, useMapNoteBtn);
 		mapNoteWidthContainer.append(mapNoteWidthControls);
 		rootContainer.append(mapNoteWidthContainer);
 
@@ -367,30 +410,26 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return conversion.points;
 	}
 
-
-	// Process Map Comment Button
-	function doMapComment(ev) {
-		// 2013-10-20: Get comment width
-		const selCommentWidth = document.getElementById('CommentWidth');
-		const width = parseInt(selCommentWidth.value, 10);
-
-		setlastCommentWidth(width);
+	function getGeometryOfSelection(width) {
+		if (!width) {
+			const selCommentWidth = document.getElementById('CommentWidth');
+			width = parseInt(selCommentWidth.value, 10);
+			setlastCommentWidth(width);
+		}
 
 		console.log(`Comment width: ${width}`);
 
-		const f = W.selectionManager.getSelectedFeatures();
-
-		if (f.length === 0) {
+		const selectedFeatures = W.selectionManager.getSelectedFeatures();
+		if (selectedFeatures.length === 0) {
 			console.error('No road selected!');
 			return null;
 		}
 
-		const segments = f.map((feature) => feature._wmeObject).filter((object) => object.type === 'segment');
+		const segments = selectedFeatures
+			.map((feature) => feature._wmeObject)
+			.filter((object) => object.type === 'segment');
 
-		createComment(getGeometryForSegments(segments, width)).then((mapComment) => {
-			W.selectionManager.unselectAll();
-			W.selectionManager.selectFeatures([mapComment.getID()]);
-		});
+		return getGeometryForSegments(segments, width);
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
@@ -554,7 +593,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function intLanguageStrings() {
 		switch(getLanguage()) {
 			default:		// 2014-06-05: English
-				langText = new Array("Select a road and click this button.","Create Note");
+				langText = new Array("Select a road and click this button.","Create New", "Use Existing");
 		}
 	}
 
