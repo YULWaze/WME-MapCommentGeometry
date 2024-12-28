@@ -51,12 +51,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 - Feedback:
 */
 
-(function() {
+(async function() {
+	await SDK_INITIALIZED;
 	const UPDATE_NOTES = 'Added ability to create map comment shapes';
 	const SCRIPT_NAME = GM_info.script.name;
 	const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
 	const idMapCommentGeo = 1;
+	const wmeSdk = getWmeSdk({ scriptId: 'wme-map-comment-geometry', scriptName: 'WME Map Comment Geometry' });
 
 	const CameraLeftPoints = [[11,6],[-4,6],[-4,3],[-11,6],[-11,-6],[-4,-3],[-4,-6],[11,-6]];
 	const CameraRightPoints = [[-11,6],[4,6],[4,3],[11,6],[11,-6],[4,-3],[4,-6],[-11,-6]];
@@ -261,9 +263,20 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 		const geoJSONGeometry = W.userscripts.toGeoJSONGeometry(polygon);
 		let UO = require("Waze/Action/UpdateObject");
-		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry: newerGeo }));
 		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry }));
 	}
+
+	async function waitForMapCommentSelection() {
+		if (WazeWrap.hasMapCommentSelected())
+			return WazeWrap.getSelectedDataModelObjects()[0];
+
+		await wmeSdk.Events.once({
+			eventName: 'wme-selection-changed',
+		});
+
+		if (WazeWrap.hasMapCommentSelected())
+			return WazeWrap.getSelectedDataModelObjects()[0];
+		return null;
 	}
 
 	function createLCamera(){ updateCommentGeometry(getShapeWKT(CameraLeftPoints)); }
