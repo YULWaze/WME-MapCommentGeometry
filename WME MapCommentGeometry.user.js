@@ -249,18 +249,18 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return mapComment;
 	}
 
-	function updateCommentGeometry(points){
-		if (WazeWrap.hasMapCommentSelected())
-		{
-			let model = WazeWrap.getSelectedDataModelObjects()[0];
-
-			center = model.getOLGeometry().getCentroid();
-
-			let newerGeo = getShapeWKT(points);
-			newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
-			let UO = require("Waze/Action/UpdateObject");
-			W.model.actionManager.add(new UO(model, { geoJSONGeometry: newerGeo }));
+	function updateCommentGeometry(points, mapComment) {
+		if (!mapComment) {
+			if (!WazeWrap.hasMapCommentSelected()) return;
+			mapComment = WazeWrap.getSelectedDataModelObjects()[0];
 		}
+
+		center = mapComment.getOLGeometry().getCentroid();
+
+		let newerGeo = getShapeWKT(points);
+		newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
+		let UO = require("Waze/Action/UpdateObject");
+		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry: newerGeo }));
 	}
 
 	function createLCamera(){ updateCommentGeometry(CameraLeftPoints); }
