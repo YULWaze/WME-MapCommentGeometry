@@ -4,9 +4,9 @@ This script creates a note around a single selected road segment. It also allows
 
 ## Instructions
 1) Install this script in Tampermonkey.
-2) Select a road in WME (you can create a new one in the shape of the map comment you want to make).
-3) Choose the width of the Map Comment from the dropdown.
-4) Click the "Create Note" button at the bottom of the left pane.
+2) Select a road in WME (you can create a new one in the shape of the Map Note you want to make).
+3) Choose the width of the Map Comment from the dropdown or keep the default.
+4) Click the "Create New" button at the bottom of the left pane or click the "Use Existing" button and then click on an existing Map Note to change its geometry to surround the selected road segment.
 5) If you want to convert a point note to a camera or arrow-shaped area, create a new Map Note or select an existing one, and then click the corresponding button.
 6) If required, use WME PIE to rotate the resulting shape.
 
