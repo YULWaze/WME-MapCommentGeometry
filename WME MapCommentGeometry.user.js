@@ -222,6 +222,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 						{ name: 'DUMMY', handler: () => null, isSelectable: false, },
 						{ name: DPAD_AREA.Left, icon: 'turn-left', handler: createLArrow },
 						{ name: DPAD_AREA.Right, icon: 'turn-right', handler: createRArrow },
+						{ name: DPAD_AREA.Middle, icon: 'pencil', handler: createCustomArrow },
 					],
 				),
 			);
@@ -266,6 +267,56 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return null;
 	}
 
+	function convertLineToArrow(line) {
+		const lastPoint = line.coordinates[line.coordinates.length - 1];
+		const secondLastPoint = line.coordinates[line.coordinates.length - 2];
+		const direction = turf.bearing(
+			turf.point(secondLastPoint),
+			turf.point(lastPoint),
+		);
+
+		const arrowSize = 10; // Arrow size in meters
+		const leftWing = turf.destination(
+			turf.point(lastPoint),
+			arrowSize,
+			direction + 90,
+			{ units: 'meters' },
+		);
+		const rightWing = turf.destination(
+			turf.point(lastPoint),
+			arrowSize,
+			direction - 90,
+			{ units: 'meters' },
+		);
+
+		const surroundedLine = turf.buffer(
+			line,
+			arrowSize / 3,
+			{ units: 'meters', steps: 4 },
+		);
+
+		const arrowHead = turf.polygon([[
+			lastPoint,
+			leftWing.geometry.coordinates,
+			turf.destination(
+				turf.point(lastPoint),
+				arrowSize,
+				direction,
+				{ units: 'meters' },
+			).geometry.coordinates,
+			rightWing.geometry.coordinates,
+			lastPoint,
+		]]);
+
+		return turf.union(
+			turf.featureCollection([
+				surroundedLine,
+				arrowHead,
+			]),
+		).geometry;
+	}
+
+
 	function createLCamera(){ updateCommentGeometry(getShapeWKT(CameraLeftPoints)); }
 	function createUCamera(){ updateCommentGeometry(getShapeWKT(CameraUpPoints)); }
 	function createRCamera(){ updateCommentGeometry(getShapeWKT(CameraRightPoints)); }
@@ -274,6 +325,12 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function createLArrow(){ updateCommentGeometry(getShapeWKT(ArrowLeftPoints)); }
     function createSArrow(){ updateCommentGeometry(getShapeWKT(ArrowStraightPoints)); }
 	function createRArrow(){ updateCommentGeometry(getShapeWKT(ArrowRightPoints)); }
+	async function createCustomArrow() {
+		const drawnLine = await wmeSdk.Map.drawLine();
+		const curvedLine = turf.bezierSpline(drawnLine, { sharpness: 0.1 }).geometry;
+		const arrowGeometry = convertLineToArrow(curvedLine);
+		updateCommentGeometry(arrowGeometry);
+	}
 
 	function getShapeWKT(points, center){
 		if (!center) {
