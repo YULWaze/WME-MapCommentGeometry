@@ -154,15 +154,17 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				Left: 'left',
 				Right: 'right',
 				Down: 'down',
+				Middle: 'middle',
 			};
 			const DPAD_NAV_ICONS = {
 				[DPAD_AREA.Up]: 'arrow-up',
 				[DPAD_AREA.Down]: 'arrow-down',
 				[DPAD_AREA.Left]: 'arrow-left',
 				[DPAD_AREA.Right]: 'arrow-right',
+				[DPAD_AREA.Middle]: 'recenter',
 			}
-			const createDPadJoystick = (buttons, dpadIcon, size = '100%') => {
-				if (buttons.length !== 4) throw new Error('There must be exactly 4 buttons in a D-Pad');
+			const createDPadJoystick = (buttons, size = '100%') => {
+				if (buttons.length < 4 || buttons.length > 5) throw new Error('There must be 4 or 5 buttons in a D-Pad');
 
 				buttons.forEach((button) => {
 					button.icon = button.icon || DPAD_NAV_ICONS[button.name];
@@ -170,12 +172,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 				const { root, buttons: buttonElements } = createJoystick([
 					[DPAD_AREA.Up],
-					[DPAD_AREA.Left, 'icon', DPAD_AREA.Right],
+					[DPAD_AREA.Left, DPAD_AREA.Middle, DPAD_AREA.Right],
 					[DPAD_AREA.Down],
-				], [
-					...buttons,
-					dpadIcon && { name: 'icon', icon: dpadIcon, isSelectable: false },
-				].filter(Boolean));
+				], buttons);
 
 				Object.entries(buttonElements).forEach(([btnName, $btn]) => {
 					if (!Object.values(DPAD_AREA).includes(btnName)) return;
@@ -192,12 +191,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				return root;
 			}
 
-			const createDPadControl = (controlName, buttons, dpadIcon, size = '100%') => {
+			const createDPadControl = (controlName, buttons, size = '100%') => {
 				const $container = $('<div style="flex: 1" />');
 				$container.append($(`<wz-label style="text-align: center">${controlName}</wz-label>`));
 				$container.append(createDPadJoystick(
 					buttons,
-					dpadIcon,
 					size
 				));
 				return $container;
@@ -212,8 +210,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 						{ name: DPAD_AREA.Down, handler: createDCamera },
 						{ name: DPAD_AREA.Left, handler: createLCamera },
 						{ name: DPAD_AREA.Right, handler: createRCamera },
+						{ name: DPAD_AREA.Middle, handler: () => null, isSelectable: false, icon: 'speed-camera' },
 					],
-					'speed-camera',
 				),
 			);
 			joysticksContainers.append(
