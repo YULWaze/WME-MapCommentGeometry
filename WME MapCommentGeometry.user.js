@@ -29,13 +29,12 @@
 // Thanks to r0den for allowing the note to be created directly on the segment and cleaning up the code
 
 // Instructions
-// 1) install this script in Tampermonkey
-// 2) select a road in WME
-// 3) click the "Use for Note" button at the bottom of the left pane
-// 4) create a new Map Note or select an existing one
-// 5) click the "Map Note on Road" button on the left pane
-//
-// 6) If you want to convert a point note to a camera or arrow-shaped area, create a new Map Note or select an existing one, and then click the corresponding button
+// 1) Install this script in Tampermonkey.
+// 2) Select a road in WME (you can create a new one in the shape of the Map Note you want to make).
+// 3) Choose the width of the Map Comment from the dropdown or keep the default.
+// 4) Click the "Create New" button at the bottom of the left pane or click the "Use Existing" button and then click on an existing Map Note to change its geometry to surround the selected road segment.
+// 5) If you want to convert a point note to a camera or arrow-shaped area, create a new Map Note or select an existing one, and then click the corresponding button.
+// If required, use WME PIE to rotate the resulting shape.
 
 /*
 To do:
