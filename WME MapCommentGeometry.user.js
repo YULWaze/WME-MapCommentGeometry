@@ -235,33 +235,21 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		}
 	}
 
-	async function createComment(points) {
-		// YUL_: Is it actually necessary to create a Polygon and put a LinearRing inside it?
-		newerGeo = new OpenLayers.Geometry.Polygon;
-		newerLinear = new OpenLayers.Geometry.LinearRing;
-		newerLinear.components = points;
-
-		newerGeo.components[0] = newerLinear;
-		newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
+	async function createComment(geoJSONGeometry) {
 		let CO = require("Waze/Action/CreateObject");
 		const mapComment = await WS.MapNotes.createNote({
-			geoJSONGeometry: newerGeo,
+			geoJSONGeometry,
 		});
 		W.model.actionManager.add(new CO(mapComment, W.model.mapComments)); // CO accepts two arguments: entity and repository
 		return mapComment;
 	}
 
-	function updateCommentGeometry(points, mapComment) {
+	function updateCommentGeometry(geoJSONGeometry, mapComment) {
 		if (!mapComment) {
 			if (!WazeWrap.hasMapCommentSelected()) return;
 			mapComment = WazeWrap.getSelectedDataModelObjects()[0];
 		}
 
-		const polygon = new OpenLayers.Geometry.Polygon(
-			new OpenLayers.Geometry.LinearRing(points),
-		);
-
-		const geoJSONGeometry = W.userscripts.toGeoJSONGeometry(polygon);
 		let UO = require("Waze/Action/UpdateObject");
 		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry }));
 	}
@@ -301,7 +289,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		}
 		wktText = wktText.slice(0, -1)
 		wktText += '))';
-		return OpenLayers.Geometry.fromWKT(wktText).getVertices();
+		return W.userscripts.toGeoJSONGeometry(OpenLayers.Geometry.fromWKT(wktText));
 	}
 
 	function WMEMapCommentGeometry_bootstrap() {
@@ -491,11 +479,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			type: 'LineString',
 			coordinates: mergedGeometryCoordinates,
 		};
-		const mergedOLGeometry = W.userscripts.toOLGeometry(mergedGeoJSONGeometry);
 
-		convertToLandmark(mergedOLGeometry, NaN, 0, conversion, width);
-
-		return conversion.points;
+		return convertToLandmark(mergedGeoJSONGeometry, NaN, 0, conversion, width);
 	}
 
 	function getGeometryOfSelection(width) {
@@ -525,7 +510,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		let i;
 		let leftPa; let rightPa; let leftPb; let rightPb;
 
-		const streetVertices = geometry.getVertices();
+		const olGeometry = W.userscripts.toOLGeometry(geometry);
+		const streetVertices = olGeometry.getVertices();
 
 		const firstStreetVerticeOutside = 0;
 
@@ -596,7 +582,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			console.log("WME Map Comment polygon: done");
 		}
 
-		return conversion.points;
+		const polygon = new OpenLayers.Geometry.Polygon(
+			new OpenLayers.Geometry.LinearRing(conversion.points),
+		);
+		return W.userscripts.toGeoJSONGeometry(polygon);
   }
 
 	function getEquation(segment) {
