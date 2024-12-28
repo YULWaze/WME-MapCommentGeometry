@@ -320,6 +320,13 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 		// Add button
 		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idMapCommentGeo)}</wz-button>`);
+		createMapNoteBtn.click((e) => {
+			e.target.blur();
+			createComment(getGeometryOfSelection()).then((mapComment) => {
+				W.selectionManager.unselectAll();
+				W.selectionManager.selectFeatures([mapComment.getID()]);
+			});
+		});
 		createMapNoteBtn.click((e) => e.target.blur());
 		createMapNoteBtn.click(doMapComment);
 
@@ -367,30 +374,26 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return conversion.points;
 	}
 
-
-	// Process Map Comment Button
-	function doMapComment(ev) {
-		// 2013-10-20: Get comment width
-		const selCommentWidth = document.getElementById('CommentWidth');
-		const width = parseInt(selCommentWidth.value, 10);
-
-		setlastCommentWidth(width);
+	function getGeometryOfSelection(width) {
+		if (!width) {
+			const selCommentWidth = document.getElementById('CommentWidth');
+			width = parseInt(selCommentWidth.value, 10);
+			setlastCommentWidth(width);
+		}
 
 		console.log(`Comment width: ${width}`);
 
-		const f = W.selectionManager.getSelectedFeatures();
-
-		if (f.length === 0) {
+		const selectedFeatures = W.selectionManager.getSelectedFeatures();
+		if (selectedFeatures.length === 0) {
 			console.error('No road selected!');
 			return null;
 		}
 
-		const segments = f.map((feature) => feature._wmeObject).filter((object) => object.type === 'segment');
+		const segments = selectedFeatures
+			.map((feature) => feature._wmeObject)
+			.filter((object) => object.type === 'segment');
 
-		createComment(getGeometryForSegments(segments, width)).then((mapComment) => {
-			W.selectionManager.unselectAll();
-			W.selectionManager.selectFeatures([mapComment.getID()]);
-		});
+		return getGeometryForSegments(segments, width);
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
