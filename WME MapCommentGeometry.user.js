@@ -2,15 +2,15 @@
 // @name 			WME MapCommentGeometry
 // @author			YUL_
 // @description 	This script creates a map note around a single selected road segment. It also allows you to create a camera or an arrow shaped note.
-// @match	  		*://*.waze.com/*editor*
+// @match			*://*.waze.com/*editor*
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
-// @require	  	https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @require			https://davidsl4.github.io/WMEScripts/lib/map-comments-polyfill.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.12.28.01	
+// @version 		2024.12.28.02
 // ==/UserScript==
 
 /* global W */
