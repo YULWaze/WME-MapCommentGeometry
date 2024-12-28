@@ -255,31 +255,40 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			mapComment = WazeWrap.getSelectedDataModelObjects()[0];
 		}
 
-		center = mapComment.getOLGeometry().getCentroid();
+		const polygon = new OpenLayers.Geometry.Polygon(
+			new OpenLayers.Geometry.LinearRing(points),
+		);
 
-		let newerGeo = getShapeWKT(points);
-		newerGeo = W.userscripts.toGeoJSONGeometry(newerGeo);
+		const geoJSONGeometry = W.userscripts.toGeoJSONGeometry(polygon);
 		let UO = require("Waze/Action/UpdateObject");
 		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry: newerGeo }));
+		W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry }));
+	}
 	}
 
-	function createLCamera(){ updateCommentGeometry(CameraLeftPoints); }
-	function createUCamera(){ updateCommentGeometry(CameraUpPoints); }
-	function createRCamera(){ updateCommentGeometry(CameraRightPoints); }
-	function createDCamera(){ updateCommentGeometry(CameraDownPoints); }
+	function createLCamera(){ updateCommentGeometry(getShapeWKT(CameraLeftPoints)); }
+	function createUCamera(){ updateCommentGeometry(getShapeWKT(CameraUpPoints)); }
+	function createRCamera(){ updateCommentGeometry(getShapeWKT(CameraRightPoints)); }
+	function createDCamera(){ updateCommentGeometry(getShapeWKT(CameraDownPoints)); }
 
-	function createLArrow(){ updateCommentGeometry(ArrowLeftPoints); }
-    function createSArrow(){ updateCommentGeometry(ArrowStraightPoints); }
-	function createRArrow(){ updateCommentGeometry(ArrowRightPoints); }
+	function createLArrow(){ updateCommentGeometry(getShapeWKT(ArrowLeftPoints)); }
+    function createSArrow(){ updateCommentGeometry(getShapeWKT(ArrowStraightPoints)); }
+	function createRArrow(){ updateCommentGeometry(getShapeWKT(ArrowRightPoints)); }
 
-	function getShapeWKT(points){
+	function getShapeWKT(points, center){
+		if (!center) {
+			if (!WazeWrap.hasMapCommentSelected()) throw new Error('No map comment selected and no center provided');
+			const mapComment = WazeWrap.getSelectedDataModelObjects()[0];
+			center = mapComment.getOLGeometry().getCentroid();
+		}
+
 		let wktText = 'POLYGON((';
 		for (let i=0; i < points.length; i++){
 			wktText += `${center.x + points[i][0]} ${center.y + points[i][1]},`;
 		}
 		wktText = wktText.slice(0, -1)
 		wktText += '))';
-		return OpenLayers.Geometry.fromWKT(wktText);
+		return OpenLayers.Geometry.fromWKT(wktText).getVertices();
 	}
 
 	function WMEMapCommentGeometry_bootstrap() {
