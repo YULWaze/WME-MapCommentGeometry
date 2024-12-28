@@ -394,6 +394,91 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		console.log("WME MapCommentGeometry");
 	}
 
+	function getSegmentsPath(segmentIds, getSegment, getConnectedSegments) {
+		const visitedSegments = new Set();
+		const forwardResult = [], backwardResult = [];
+
+		// Convert segmentIds to a Set for quick lookup
+		const validSegmentIds = new Set(segmentIds);
+
+		// Start traversal from the first segment in the list
+		const initialSegmentId = segmentIds[0];
+		const { fromNodeId, toNodeId } = getSegment(initialSegmentId);
+
+		// Queues for forward and backward traversal
+		const forwardQueue = [];
+		const backwardQueue = [];
+
+		const addToQueue = (queue, nextNodeId) => {
+			const connectedSegments = getConnectedSegments(nextNodeId);
+			for (const connectedSegment of connectedSegments) {
+				if (!validSegmentIds.has(connectedSegment) || visitedSegments.has(connectedSegment)) continue;
+				queue.push({ segmentId: connectedSegment, currentNodeId: nextNodeId });
+			}
+		}
+
+		forwardResult.push({ segmentId: initialSegmentId, direction: 'fwd' });
+		visitedSegments.add(initialSegmentId);
+		addToQueue(forwardQueue, toNodeId);
+		addToQueue(backwardQueue, fromNodeId);
+
+		while (forwardQueue.length > 0) {
+			const { segmentId, currentNodeId } = forwardQueue.shift();
+
+			if (visitedSegments.has(segmentId)) continue;
+			visitedSegments.add(segmentId);
+
+			// Query segment details
+			const { fromNodeId, toNodeId } = getSegment(segmentId);
+
+			// Determine the segment's direction
+			const direction = currentNodeId === fromNodeId ? "fwd" : "rev";
+			forwardResult.push({ segmentId, direction });
+
+			// Get the next node to traverse
+			const nextNodeId = direction === 'fwd' ? toNodeId : fromNodeId;
+			addToQueue(forwardQueue, nextNodeId);
+		}
+
+		while (backwardQueue.length > 0) {
+			const { segmentId, currentNodeId } = backwardQueue.shift();
+
+			if (visitedSegments.has(segmentId)) continue;
+			visitedSegments.add(segmentId);
+
+			// Query segment details
+			const { fromNodeId, toNodeId } = getSegment(segmentId);
+
+			// Determine the segment's direction
+			const direction = currentNodeId === fromNodeId ? "rev" : "fwd";
+			backwardResult.push({ segmentId, direction });
+
+			// Get the next node to traverse
+			const nextNodeId = direction === 'fwd' ? fromNodeId : toNodeId;
+			addToQueue(backwardQueue, nextNodeId);
+		}
+
+		return [...backwardResult.reverse(), ...forwardResult];
+	}
+
+	function mergeSegmentsGeometry(segmentIds) {
+		const segmentsPath = getSegmentsPath(
+			segmentIds,
+			(segmentId) => wmeSdk.DataModel.Segments.getById({ segmentId }),
+			(nodeId) => wmeSdk.DataModel.Nodes.getById({ nodeId }).connectedSegmentIds,
+		);
+
+		return segmentsPath.reduce((points, { segmentId, direction }) => {
+			const segment = wmeSdk.DataModel.Segments.getById({ segmentId });
+			const segmentGeometry = segment.geometry.coordinates;
+			if (direction === 'rev') segmentGeometry.reverse();
+
+			// Remove the last point of the previous segment to avoid duplicate points
+			if (points.length > 0) points.pop();
+			return points.concat(segmentGeometry);
+		}, []);
+	}
+
 	function getGeometryForSegments(segments, width) {
 		const conversion = {
 			points: null,
@@ -401,10 +486,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 			lastRightEq: null,
 		};
 
-		for (let i = segments.length - 1; i >= 0; i--) {
-			const segment = segments[i];
-			convertToLandmark(segment, NaN, i, conversion, width);
-		}
+		const mergedGeometryCoordinates = mergeSegmentsGeometry(segments.map((segment) => segment.attributes.id));
+		const mergedGeoJSONGeometry = {
+			type: 'LineString',
+			coordinates: mergedGeometryCoordinates,
+		};
+		const mergedOLGeometry = W.userscripts.toOLGeometry(mergedGeoJSONGeometry);
+
+		convertToLandmark(mergedOLGeometry, NaN, 0, conversion, width);
 
 		return conversion.points;
 	}
@@ -432,11 +521,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 	// Based on selected helper road modifies a map comment to precisely follow the road's geometry
-	function convertToLandmark(sel, NumSegments, s, conversion = { points: polyPoints, lastRightEq: prevRightEq, lastLeftEq: prevLeftEq }, width = TheCommentWidth) {
+	function convertToLandmark(geometry, NumSegments, s, conversion = { points: polyPoints, lastRightEq: prevRightEq, lastLeftEq: prevLeftEq }, width = TheCommentWidth) {
 		let i;
 		let leftPa; let rightPa; let leftPb; let rightPb;
 
-		const streetVertices = sel.geometry.getVertices();
+		const streetVertices = geometry.getVertices();
 
 		const firstStreetVerticeOutside = 0;
 
