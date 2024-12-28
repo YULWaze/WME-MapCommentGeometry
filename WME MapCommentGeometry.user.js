@@ -57,7 +57,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	const SCRIPT_NAME = GM_info.script.name;
 	const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
-	const idMapCommentGeo = 1;
+	const idNewMapComment = 1;
+	const idExistingMapComment = 2;
 	const wmeSdk = getWmeSdk({ scriptId: 'wme-map-comment-geometry', scriptName: 'WME Map Comment Geometry' });
 
 	const CameraLeftPoints = [[11,6],[-4,6],[-4,3],[-11,6],[-11,-6],[-4,-3],[-4,-6],[11,-6]];
@@ -341,7 +342,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		catch(e) { }
 
 		// Add button
-		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idMapCommentGeo)}</wz-button>`);
+		const createMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idNewMapComment)}</wz-button>`);
 		createMapNoteBtn.click((e) => {
 			e.target.blur();
 			createComment(getGeometryOfSelection()).then((mapComment) => {
@@ -349,8 +350,18 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 				W.selectionManager.selectFeatures([mapComment.getID()]);
 			});
 		});
-		createMapNoteBtn.click((e) => e.target.blur());
-		createMapNoteBtn.click(doMapComment);
+
+		const useMapNoteBtn = $(`<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idExistingMapComment)}</wz-button>`);
+		useMapNoteBtn.click(async (e) => {
+			e.target.blur();
+			e.target.disabled = true;
+			const selectionGeometry = getGeometryOfSelection();
+			WazeWrap.Alerts.info('WME Map Comment Geometry', 'Select an existing map comment to update its geometry');
+			const mapComment = await waitForMapCommentSelection();
+			useMapNoteBtn.disabled = false;
+			if (!mapComment) return;
+			updateCommentGeometry(selectionGeometry, mapComment);
+		});
 
 		// Add dropdown for comment width
 		const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
@@ -360,6 +371,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		selCommentWidth.append( $('<wz-option value="20">20 m</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="25">25 m</wz-option>') );
 		selCommentWidth.attr('value', getLastCommentWidth(DefaultCommentWidth));
+		const selCommentWidthStyles = new CSSStyleSheet();
+		selCommentWidthStyles.replaceSync('.wz-select { min-width: initial !important }');
+		selCommentWidth[0].shadowRoot.adoptedStyleSheets.push(selCommentWidthStyles);
 
 		// Add MapCommentGeo section
 		const rootContainer = $('<section id="MapCommentGeo" />');
@@ -370,7 +384,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		mapNoteWidthContainer.append( $('<wz-label>Map Note Width</wz-label>') );
 		const mapNoteWidthControls = $('<div style="display: flex; gap: 12px;" />');
 		mapNoteWidthControls.append(selCommentWidth);
-		mapNoteWidthControls.append(createMapNoteBtn);
+		mapNoteWidthControls.append(createMapNoteBtn, useMapNoteBtn);
 		mapNoteWidthContainer.append(mapNoteWidthControls);
 		rootContainer.append(mapNoteWidthContainer);
 
@@ -579,7 +593,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function intLanguageStrings() {
 		switch(getLanguage()) {
 			default:		// 2014-06-05: English
-				langText = new Array("Select a road and click this button.","Create Note");
+				langText = new Array("Select a road and click this button.","Create New", "Use Existing");
 		}
 	}
 
