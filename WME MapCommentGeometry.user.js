@@ -349,6 +349,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           geometry: newGeometry,
         });
         break;
+      case 'permanentHazard':
+        updatePermanentHazard(selection.ids[0], { geometry: newGeometry });
+        break;
       default:
         console.error('updateSelectedFeatureGeometry has been called but the selected feature is not supported: ' + selection.objectType);
         return;
@@ -366,6 +369,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     switch (selection.objectType) {
       case 'mapComment':
         return wmeSdk.DataModel.MapComments.getById({ mapCommentId: selection.ids[0].toString() }).geometry;  // TODO: There is a bug currently with the SDK causing the update to fail due to type mismatch
+      case 'permanentHazard':
+        return getPermanentHazard(selection.ids[0]).geometry;
       default:
         console.warn('getGeometryOfSelection has been called but the selected feature is not supported: ' + selection.objectType);
         return null;
@@ -476,6 +481,43 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     return new Promise((resolve) => {
       element.addEventListener(eventName, () => resolve(), { once: true });
     });
+  }
+
+  function getPermanentHazard(permanentHazardId) {
+    const getters = {
+      'camera': () => wmeSdk.DataModel.PermanentHazards.getCameraById({ cameraId: permanentHazardId }),
+      'schoolZone': () => wmeSdk.DataModel.PermanentHazards.getSchoolZoneById({ schoolZoneId: permanentHazardId }),
+    };
+
+    const values = Object.entries(getters).map(([subtype, getter]) => {
+      return [subtype, getter()];
+    }).filter(([, value]) => !!value);
+
+    if (values.length > 0) {
+      console.warn('ambiguous result found in getPermanentHazard, returning the first one');
+    }
+
+    const [type, permanentHazard] = values[0];
+    return {
+      type,
+      permanentHazard,
+    };
+  }
+
+  function updatePermanentHazard(permanentHazardId, args) {
+    const { type } = getPermanentHazard(permanentHazardId);
+
+    switch (type) {
+      case 'schoolZone':
+        wmeSdk.DataModel.PermanentHazards.updateSchoolZone({
+          schoolZoneId: permanentHazardId,
+          ...args,
+        });
+        break;
+      default:
+        console.error('updatePermanentHazard has been called but the given permanent hazard is not supported: ' + type);
+        break;  
+    }
   }
 
   function WMEMapCommentGeometry_init() {
