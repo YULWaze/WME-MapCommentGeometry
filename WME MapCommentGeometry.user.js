@@ -6,7 +6,7 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			https://github.com/WazeSpace/wme-sdk-plus/releases/download/v1.0.1/wme-sdk-plus.min.js
+// @require			https://github.com/WazeSpace/wme-sdk-plus/releases/download/v1.0.2/wme-sdk-plus.min.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
@@ -307,13 +307,13 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
   }
 
   async function waitForMapCommentSelection() {
-    if (WazeWrap.hasMapCommentSelected()) return WazeWrap.getSelectedDataModelObjects()[0];
+    if (hasSelectedFeatures('mapComment')) return wmeSdk.Editing.getSelection().ids[0];
 
     await wmeSdk.Events.once({
       eventName: "wme-selection-changed",
     });
 
-    if (WazeWrap.hasMapCommentSelected()) return WazeWrap.getSelectedDataModelObjects()[0];
+    if (hasSelectedFeatures('mapComment')) return wmeSdk.Editing.getSelection().ids[0];
     return null;
   }
 
@@ -507,14 +507,17 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         snackbar.show();
 
         try {
-          const mapComment = await Promise.race([
+          const mapCommentId = await Promise.race([
             waitForMapCommentSelection(),
             waitForEvent(snackbar.button, 'click').then(() => {
               throw new Error('CANCELLED');
             }),
           ]);
-          if (!mapComment) return;
-          updateCommentGeometry(selectionGeometry, mapComment);
+          if (!mapCommentId) return;
+          wmeSdk.DataModel.MapComments.updateMapComment({
+            mapCommentId,
+            geometry: selectionGeometry,
+          })
         } catch {} finally {
           e.target.disabled = false;
           snackbar.remove();
