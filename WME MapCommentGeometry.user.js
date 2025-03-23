@@ -60,6 +60,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
   const idNewMapComment = 1;
   const idExistingMapComment = 2;
   const wmeSdk = getWmeSdk({ scriptId: "wme-map-comment-geometry", scriptName: "WME Map Comment Geometry" });
+  if (!wmeSdk.State.isInitialized())
+    await wmeSdk.Events.once({ eventName: "wme-initialized" });
   initWmeSdkPlus(wmeSdk);
 
   const CameraLeftPoints = [
