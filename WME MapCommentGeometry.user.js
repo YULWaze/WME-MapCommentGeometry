@@ -6,12 +6,12 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			https://davidsl4.github.io/WMEScripts/lib/map-comments-polyfill.js
+// @require			http://davidsl4.github.io/WMEScripts/lib/wme-sdk-plus.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2024.12.28.05
+// @version 		2025.03.23.1
 // ==/UserScript==
 
 /* global W */
@@ -53,13 +53,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 (async function() {
 	await SDK_INITIALIZED;
-	const UPDATE_NOTES = 'Added ability to create map comment shapes';
+	const UPDATE_NOTES = 'Added ability to infer width from selected segment';
 	const SCRIPT_NAME = GM_info.script.name;
 	const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
 	const idNewMapComment = 1;
 	const idExistingMapComment = 2;
 	const wmeSdk = getWmeSdk({ scriptId: 'wme-map-comment-geometry', scriptName: 'WME Map Comment Geometry' });
+	initWmeSdkPlus(wmeSdk);
 
 	const CameraLeftPoints = [[11,6],[-4,6],[-4,3],[-11,6],[-11,-6],[-4,-3],[-4,-6],[11,-6]];
 	const CameraRightPoints = [[-11,6],[4,6],[4,3],[11,6],[11,-6],[4,-3],[4,-6],[-11,-6]];
@@ -231,12 +232,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 	async function createComment(geoJSONGeometry) {
-		let CO = require("Waze/Action/CreateObject");
-		const mapComment = await WS.MapNotes.createNote({
+		return wmeSdk.DataModel.MapComments.addMapComment({
 			geoJSONGeometry,
 		});
-		W.model.actionManager.add(new CO(mapComment, W.model.mapComments)); // CO accepts two arguments: entity and repository
-		return mapComment;
 	}
 
 	function updateCommentGeometry(geoJSONGeometry, mapComment) {
@@ -403,12 +401,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 		// Add dropdown for comment width
 		const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
+		selCommentWidth.append( $('<wz-option value="SEG_WIDTH">Infer</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="5">5 m</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="10">10 m</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="15">15 m</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="20">20 m</wz-option>') );
 		selCommentWidth.append( $('<wz-option value="25">25 m</wz-option>') );
-		selCommentWidth.attr('value', getLastCommentWidth(DefaultCommentWidth));
+		const widthToSelect = getLastCommentWidth(NaN);
+		selCommentWidth.attr('value', isNaN(widthToSelect) ? 'SEG_WIDTH' : widthToSelect);
 		const selCommentWidthStyles = new CSSStyleSheet();
 		selCommentWidthStyles.replaceSync('.wz-select { min-width: initial !important }');
 		selCommentWidth[0].shadowRoot.adoptedStyleSheets.push(selCommentWidthStyles);
@@ -528,11 +528,61 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		return convertToLandmark(mergedGeoJSONGeometry, width);
 	}
 
+	function ensureMetricUnits(value) {
+		if (!value) return null;
+
+		const userSettings = wmeSdk.Settings.getUserSettings();
+		if (userSettings && !userSettings.isImperial) return value;
+
+		const conversionFactor = 0.3048; // 1 foot = 0.3048 meters
+		return Math.round(imperialValue * conversionFactor);
+	}
+
+	function getSegmentWidth(segmentId) {
+		const segment = wmeSdk.DataModel.Segments.getById({ segmentId });
+		if (!segment) {
+			console.error(`Segment with ID ${segmentId} not found.`);
+			return null;
+		}
+
+		const segmentAddress = wmeSdk.DataModel.Segments.getAddress({ segmentId });
+		const defaultLaneWidth =
+			(segmentAddress.country.defaultLaneWidthPerRoadType ?
+				segmentAddress.country.defaultLaneWidthPerRoadType[segment.roadType] : 330) / 100;
+
+		const averageNumberOfLanes = (
+			(segment.fromLanesInfo?.numberOfLanes || 1) +
+			(segment.toLanesInfo?.numberOfLanes || 1)
+		) / 2;
+		const averageLaneWidth = (
+			(ensureMetricUnits(segment.fromLanesInfo?.laneWidth) || defaultLaneWidth) +
+			(ensureMetricUnits(segment.toLanesInfo?.laneWidth) || defaultLaneWidth)
+		) / 2;
+		return averageLaneWidth * averageNumberOfLanes;
+	}
+
+	function getWidthOfSegments(segmentIds) {
+		const widths = segmentIds.map((segmentId) => getSegmentWidth(segmentId));
+		const averageWidth = widths.reduce((sum, width) => sum + width, 0) / widths.length;
+		return Math.round(averageWidth);
+	}
+
 	function getGeometryOfSelection(width) {
-		if (!width) {
+		if (!width || isNaN(width)) {
 			const selCommentWidth = document.getElementById('CommentWidth');
-			width = parseInt(selCommentWidth.value, 10);
-			setlastCommentWidth(width);
+			if (selCommentWidth.value === 'SEG_WIDTH') {
+				const selection = wmeSdk.Editing.getSelection();
+				if (!selection || selection.objectType !== 'segment') {
+					console.error('No road selected!');
+					return null;
+				}
+
+				width = getWidthOfSegments(selection.ids);
+				setlastCommentWidth(NaN);
+			} else {
+				width = parseInt(selCommentWidth.value, 10);
+				setlastCommentWidth(width);
+			}
 		}
 
 		console.log(`Comment width: ${width}`);
@@ -567,6 +617,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	function setlastCommentWidth(CommentWidth){
 		if(typeof(Storage)!=="undefined"){
 			// 2013-06-09: Yes! localStorage and sessionStorage support!
+			if (!CommentWidth || isNaN(CommentWidth)) {
+				// We want to use the default comment width, which is based on the selected segment
+				// So we don't need to save it, and if we already have it in sessionStorage, we can remove it
+				sessionStorage.removeItem('CommentWidth');
+			}
 			sessionStorage.CommentWidth=Number(CommentWidth);
 		 }
 		 else{
