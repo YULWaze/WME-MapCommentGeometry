@@ -6,7 +6,7 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			http://davidsl4.github.io/WMEScripts/lib/wme-sdk-plus.js
+// @require			https://github.com/WazeSpace/wme-sdk-plus/releases/download/v1.0.1/wme-sdk-plus.min.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
@@ -296,12 +296,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		lockRegion.before(joysticksContainers);
 	}
 
-  async function createComment(geoJSONGeometry) {
-    return wmeSdk.DataModel.MapComments.addMapComment({
-      geoJSONGeometry,
-    });
-  }
-
   function updateCommentGeometry(geoJSONGeometry, mapComment) {
     if (!mapComment) {
       if (!WazeWrap.hasMapCommentSelected()) return;
@@ -402,6 +396,51 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     WMEMapCommentGeometry_init();
   }
 
+  function createSnackbar(options) {
+    const { label, button, closeAutomatically = true, showCloseButton = true } = options;
+
+    const $snackbarContainer = $('<wz-snackbar></wz-snackbar>')
+    if (!showCloseButton) $snackbarContainer.attr('close-button', false);
+    if (!closeAutomatically) $snackbarContainer.attr('close-automatically', false);
+    $snackbarContainer.attr('align', 'center');
+    $snackbarContainer.css('--wz-snackbar-position', 'absolute');
+
+    const $textWrapper = $('<span></span>');
+    $textWrapper.addClass('text-wrapper');
+    $textWrapper.text(label);
+
+    $snackbarContainer.append($textWrapper);
+
+    let $btn = null;
+    if (button) {
+      const { label, onClick } = button;
+
+      const $snackbarActions = $('<wz-snackbar-actions></wz-snackbar-actions>');
+      $btn = $('<wz-button></wz-button>');
+      $btn.attr('color', 'text');
+      $btn.text(label);
+      if (onClick) $btn.click(onClick);
+      $snackbarActions.append($btn);
+
+      $snackbarContainer.append($snackbarActions);
+    }
+    
+
+    $('#map-message-container').append($snackbarContainer);
+    return {
+      show: () => $snackbarContainer[0].showSnackbar(),
+      hide: () => $snackbarContainer[0].hideSnackbar(),
+      remove: () => $snackbarContainer.remove(),
+      button: $btn[0],
+    }
+  }
+
+  function waitForEvent(element, eventName) {
+    return new Promise((resolve) => {
+      element.addEventListener(eventName, () => resolve(), { once: true });
+    });
+  }
+
   function WMEMapCommentGeometry_init() {
     try {
       let updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(
@@ -437,10 +476,15 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       );
       createMapNoteBtn.click((e) => {
         e.target.blur();
-        createComment(getGeometryOfSelection()).then((mapComment) => {
-          W.selectionManager.unselectAll();
-          W.selectionManager.selectFeatures([mapComment.getID()]);
-        });
+				const mapCommentId = wmeSdk.DataModel.MapComments.addMapComment({
+					geometry: getGeometryOfSelection(),
+				});
+				wmeSdk.Editing.setSelection({
+					selection: {
+						ids: [mapCommentId],
+						objectType: 'mapComment',
+					},
+				});
       });
 
       const useMapNoteBtn = $(
@@ -452,11 +496,29 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         e.target.blur();
         e.target.disabled = true;
         const selectionGeometry = getGeometryOfSelection();
-        WazeWrap.Alerts.info("WME Map Comment Geometry", "Select an existing map comment to update its geometry");
-        const mapComment = await waitForMapCommentSelection();
-        useMapNoteBtn.disabled = false;
-        if (!mapComment) return;
-        updateCommentGeometry(selectionGeometry, mapComment);
+        const snackbar = createSnackbar({
+          label: 'Select an existing map comment to update its geometry',
+          closeAutomatically: false,
+          showCloseButton: false,
+          button: {
+            label: 'Cancel',
+          }
+        });
+        snackbar.show();
+
+        try {
+          const mapComment = await Promise.race([
+            waitForMapCommentSelection(),
+            waitForEvent(snackbar.button, 'click').then(() => {
+              throw new Error('CANCELLED');
+            }),
+          ]);
+          if (!mapComment) return;
+          updateCommentGeometry(selectionGeometry, mapComment);
+        } catch {} finally {
+          e.target.disabled = false;
+          snackbar.remove();
+        }
       });
 
       // Add dropdown for comment width
