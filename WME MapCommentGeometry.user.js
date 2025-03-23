@@ -6,7 +6,7 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			https://davidsl4.github.io/WMEScripts/lib/map-comments-polyfill.js
+// @require			http://davidsl4.github.io/WMEScripts/lib/wme-sdk-plus.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
@@ -60,6 +60,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	const idNewMapComment = 1;
 	const idExistingMapComment = 2;
 	const wmeSdk = getWmeSdk({ scriptId: 'wme-map-comment-geometry', scriptName: 'WME Map Comment Geometry' });
+	initWmeSdkPlus(wmeSdk);
 
 	const CameraLeftPoints = [[11,6],[-4,6],[-4,3],[-11,6],[-11,-6],[-4,-3],[-4,-6],[11,-6]];
 	const CameraRightPoints = [[-11,6],[4,6],[4,3],[11,6],[11,-6],[4,-3],[4,-6],[-11,-6]];
@@ -231,12 +232,9 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 	}
 
 	async function createComment(geoJSONGeometry) {
-		let CO = require("Waze/Action/CreateObject");
-		const mapComment = await WS.MapNotes.createNote({
+		return wmeSdk.DataModel.MapComments.addMapComment({
 			geoJSONGeometry,
 		});
-		W.model.actionManager.add(new CO(mapComment, W.model.mapComments)); // CO accepts two arguments: entity and repository
-		return mapComment;
 	}
 
 	function updateCommentGeometry(geoJSONGeometry, mapComment) {
