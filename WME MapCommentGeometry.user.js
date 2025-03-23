@@ -53,7 +53,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 (async function() {
 	await SDK_INITIALIZED;
-	const UPDATE_NOTES = 'Added ability to create map comment shapes';
+	const UPDATE_NOTES = 'Added ability to infer width from selected segment';
 	const SCRIPT_NAME = GM_info.script.name;
 	const SCRIPT_VERSION = GM_info.script.version;
 	const idTitle = 0;
