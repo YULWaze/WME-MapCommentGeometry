@@ -331,55 +331,80 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     return turf.union(turf.featureCollection([surroundedLine, arrowHead])).geometry;
   }
 
-  function getSelectedMapComment() {
+  function updateSelectedFeatureGeometry(newGeometry) {
     const selection = wmeSdk.Editing.getSelection();
-    if (!selection || selection.objectType !== 'mapComment') return null;
+    if (!selection) {
+      console.warn('updateSelectedFeatureGeometry has been called without active selection');
+      return;
+    }
 
-    const mapComment = wmeSdk.DataModel.MapComments.getById({ mapCommentId: selection.ids[0].toString() });
-    return mapComment;
+    if (selection.ids.length > 1) {
+      console.warn('updateSelectedFeatureGeometry has been called with multiple selected objects, only the first one will be updated');
+    }
+
+    switch (selection.objectType) {
+      case 'mapComment':
+        wmeSdk.DataModel.MapComments.updateMapComment({
+          mapCommentId: selection.ids[0].toString(), // TODO: There is a bug currently with the SDK causing the update to fail due to type mismatch
+          geometry: newGeometry,
+        });
+        break;
+      default:
+        console.error('updateSelectedFeatureGeometry has been called but the selected feature is not supported: ' + selection.objectType);
+        return;
+    }
   }
 
-  function updateSelectedMapCommentGeometry(geometry) {
-    wmeSdk.DataModel.MapComments.updateMapComment({
-      mapCommentId: getSelectedMapComment().id,
-      geometry,
-    });
+  function getGeometryOfSelection() {
+    const selection = wmeSdk.Editing.getSelection();
+    if (!selection) return null;
+
+    if (selection.ids.length > 1) {
+      console.warn('getGeometryOfSelection has been called with multiple selected objects, only the first one will be returned');
+    }
+
+    switch (selection.objectType) {
+      case 'mapComment':
+        return wmeSdk.DataModel.MapComments.getById({ mapCommentId: selection.ids[0].toString() }).geometry;  // TODO: There is a bug currently with the SDK causing the update to fail due to type mismatch
+      default:
+        console.warn('getGeometryOfSelection has been called but the selected feature is not supported: ' + selection.objectType);
+        return null;
+    }
   }
 
-  function applyShapeToSelectedMapComment(shapePoints) {
-    const selectedMapComment = getSelectedMapComment();
-    const mapCommentCentroid = turf.centroid(selectedMapComment.geometry).geometry;
-    const openLayersCentroid = W.userscripts.toOLGeometry(mapCommentCentroid);
-    updateSelectedMapCommentGeometry(getShapeWKT(shapePoints, openLayersCentroid));
+  function applyShapeToSelectedFeature(shapePoints) {
+    const geometryCentroid = turf.centroid(getGeometryOfSelection()).geometry;
+    const openLayersCentroid = W.userscripts.toOLGeometry(geometryCentroid);
+    updateSelectedFeatureGeometry(getShapeWKT(shapePoints, openLayersCentroid));
   }
 
   function createLCamera() {
-    applyShapeToSelectedMapComment(CameraLeftPoints);
+    applyShapeToSelectedFeature(CameraLeftPoints);
   }
   function createUCamera() {
-    applyShapeToSelectedMapComment(CameraUpPoints);
+    applyShapeToSelectedFeature(CameraUpPoints);
   }
   function createRCamera() {
-    applyShapeToSelectedMapComment(CameraRightPoints);
+    applyShapeToSelectedFeature(CameraRightPoints);
   }
   function createDCamera() {
-    applyShapeToSelectedMapComment(CameraDownPoints);
+    applyShapeToSelectedFeature(CameraDownPoints);
   }
 
   function createLArrow() {
-    applyShapeToSelectedMapComment(ArrowLeftPoints);
+    applyShapeToSelectedFeature(ArrowLeftPoints);
   }
   function createSArrow() {
-    applyShapeToSelectedMapComment(ArrowStraightPoints);
+    applyShapeToSelectedFeature(ArrowStraightPoints);
   }
   function createRArrow() {
-    applyShapeToSelectedMapComment(ArrowRightPoints);
+    applyShapeToSelectedFeature(ArrowRightPoints);
   }
   async function createCustomArrow() {
     const drawnLine = await wmeSdk.Map.drawLine();
     const curvedLine = turf.bezierSpline(drawnLine, { sharpness: 0.1 }).geometry;
     const arrowGeometry = convertLineToArrow(curvedLine);
-    updateSelectedMapCommentGeometry(arrowGeometry);
+    updateSelectedFeatureGeometry(arrowGeometry);
   }
 
   function getShapeWKT(points, center) {
