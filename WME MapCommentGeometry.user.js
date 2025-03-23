@@ -153,151 +153,148 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
   const DefaultCommentWidth = 10;
   let TheCommentWidth;
 
-  function addWMEMCbutton() {
-    if (WazeWrap.hasMapCommentSelected()) {
-      let mapComment = WazeWrap.getSelectedFeatures()[0];
-      const lockRegion = $(".lock-edit-region");
+	function hasSelectedFeatures(featureType) {
+		const selection = wmeSdk.Editing.getSelection();
+		if (!selection) return false;
+		return selection.objectType === featureType;
+	}
 
-      const regionDiv = $('<div class="WME-MC-region"/>');
-      const mainDiv = $('<div class="form-group"/>');
-      const controlsDiv = $('<div class="controls"/>');
+	function addControlsToMapCommentEditPanel() {
+		if (!hasSelectedFeatures('mapComment')) return;
 
-      const createJoystick = (areas, buttons) => {
-        const unassignedAreas = new Set(areas.flat());
-        const maxControlsInRow = areas.reduce((currentMax, row) => Math.max(currentMax, row.length), 0);
-        const cssAreas = areas
-          .map((row) => {
-            if (row.length === maxControlsInRow) return `"${row.join(" ")}" 1fr`;
+		const lockRegion = $(".lock-edit-region");
 
-            const singleAreaUnits = Math.floor(maxControlsInRow / row.length);
-            const availableUnits = maxControlsInRow - singleAreaUnits * row.length;
+		const createJoystick = (areas, buttons) => {
+			const unassignedAreas = new Set(areas.flat());
+			const maxControlsInRow = areas.reduce((currentMax, row) => Math.max(currentMax, row.length), 0);
+			const cssAreas = areas
+				.map((row) => {
+					if (row.length === maxControlsInRow) return `"${row.join(" ")}" 1fr`;
 
-            return row.reduce((result, currentArea, currentAreaIndex, areas) => {
-              const isLastArea = currentAreaIndex + 1 >= areas.length;
-              const insert = (times) => {
-                for (let i = 0; i < times; i++) result.push(currentArea);
-              };
+					const singleAreaUnits = Math.floor(maxControlsInRow / row.length);
+					const availableUnits = maxControlsInRow - singleAreaUnits * row.length;
 
-              insert(singleAreaUnits);
-              if (isLastArea) insert(availableUnits);
+					return row.reduce((result, currentArea, currentAreaIndex, areas) => {
+						const isLastArea = currentAreaIndex + 1 >= areas.length;
+						const insert = (times) => {
+							for (let i = 0; i < times; i++) result.push(currentArea);
+						};
 
-              return `"${result.join(" ")}" 1fr`;
-            }, []);
-          })
-          .join(" ");
+						insert(singleAreaUnits);
+						if (isLastArea) insert(availableUnits);
 
-        const joystickContainer = $('<div style="display: grid; align-items: center;"/>');
-        joystickContainer.css("grid-template", cssAreas);
+						return `"${result.join(" ")}" 1fr`;
+					}, []);
+				})
+				.join(" ");
 
-        const buttonElements = {};
-        buttons.forEach((button) => {
-          const { name, icon, handler, isSelectable = true, flipIconVertically = false } = button;
-          if (!unassignedAreas.has(name)) return;
-          unassignedAreas.delete(name);
+			const joystickContainer = $('<div style="display: grid; align-items: center;"/>');
+			joystickContainer.css("grid-template", cssAreas);
 
-          const $icon = $(`<i class="w-icon w-icon-${icon}" />`);
-          if (flipIconVertically) $icon.css("transform", "rotateX(180deg)");
+			const buttonElements = {};
+			buttons.forEach((button) => {
+				const { name, icon, handler, isSelectable = true, flipIconVertically = false } = button;
+				if (!unassignedAreas.has(name)) return;
+				unassignedAreas.delete(name);
 
-          const $btn = $('<wz-button color="clear-icon" size="sm" />');
-          $btn.css("grid-area", name);
-          if (!isSelectable) {
-            $btn.attr("disabled", true);
-            $icon.css("color", "#000");
-          }
-          $btn.append($icon);
-          $btn.click((e) => e.target.blur());
-          if (handler) $btn.click(handler);
-          joystickContainer.append($btn);
-          buttonElements[name] = $btn;
-        });
+				const $icon = $(`<i class="w-icon w-icon-${icon}" />`);
+				if (flipIconVertically) $icon.css("transform", "rotateX(180deg)");
 
-        Array.from(unassignedAreas.values()).forEach((area) => {
-          const $dummy = $("<div />");
-          $dummy.css("grid-area", area);
-          joystickContainer.append($dummy);
-        });
+				const $btn = $('<wz-button color="clear-icon" size="sm" />');
+				$btn.css("grid-area", name);
+				if (!isSelectable) {
+					$btn.attr("disabled", true);
+					$icon.css("color", "#000");
+				}
+				$btn.append($icon);
+				$btn.click((e) => e.target.blur());
+				if (handler) $btn.click(handler);
+				joystickContainer.append($btn);
+				buttonElements[name] = $btn;
+			});
 
-        return {
-          root: joystickContainer,
-          buttons: buttonElements,
-        };
-      };
+			Array.from(unassignedAreas.values()).forEach((area) => {
+				const $dummy = $("<div />");
+				$dummy.css("grid-area", area);
+				joystickContainer.append($dummy);
+			});
 
-      const DPAD_AREA = {
-        Up: "up",
-        Left: "left",
-        Right: "right",
-        Down: "down",
-        Middle: "middle",
-      };
-      const DPAD_NAV_ICONS = {
-        [DPAD_AREA.Up]: "arrow-up",
-        [DPAD_AREA.Down]: "arrow-down",
-        [DPAD_AREA.Left]: "arrow-left",
-        [DPAD_AREA.Right]: "arrow-right",
-        [DPAD_AREA.Middle]: "recenter",
-      };
-      const createDPadJoystick = (buttons, size = "100%") => {
-        if (buttons.length < 4 || buttons.length > 5) throw new Error("There must be 4 or 5 buttons in a D-Pad");
+			return {
+				root: joystickContainer,
+				buttons: buttonElements,
+			};
+		};
 
-        buttons.forEach((button) => {
-          button.icon = button.icon || DPAD_NAV_ICONS[button.name];
-        });
+		const DPAD_AREA = {
+			Up: "up",
+			Left: "left",
+			Right: "right",
+			Down: "down",
+			Middle: "middle",
+		};
+		const DPAD_NAV_ICONS = {
+			[DPAD_AREA.Up]: "arrow-up",
+			[DPAD_AREA.Down]: "arrow-down",
+			[DPAD_AREA.Left]: "arrow-left",
+			[DPAD_AREA.Right]: "arrow-right",
+			[DPAD_AREA.Middle]: "recenter",
+		};
+		const createDPadJoystick = (buttons, size = "100%") => {
+			if (buttons.length < 4 || buttons.length > 5) throw new Error("There must be 4 or 5 buttons in a D-Pad");
 
-        const { root, buttons: buttonElements } = createJoystick(
-          [[DPAD_AREA.Up], [DPAD_AREA.Left, DPAD_AREA.Middle, DPAD_AREA.Right], [DPAD_AREA.Down]],
-          buttons
-        );
+			buttons.forEach((button) => {
+				button.icon = button.icon || DPAD_NAV_ICONS[button.name];
+			});
 
-        Object.entries(buttonElements).forEach(([btnName, $btn]) => {
-          if (!Object.values(DPAD_AREA).includes(btnName)) return;
+			const { root, buttons: buttonElements } = createJoystick(
+				[[DPAD_AREA.Up], [DPAD_AREA.Left, DPAD_AREA.Middle, DPAD_AREA.Right], [DPAD_AREA.Down]],
+				buttons
+			);
 
-          $btn.css("justify-self", "center");
-          $btn.css("width", "fit-content");
-        });
+			Object.entries(buttonElements).forEach(([btnName, $btn]) => {
+				if (!Object.values(DPAD_AREA).includes(btnName)) return;
 
-        root.css("aspect-ratio", "1");
-        root.css("max-width", size);
-        root.css("background-color", "var(--surface_default)");
-        root.css("border-radius", "50%");
-        root.css("overflow", "hidden");
-        return root;
-      };
+				$btn.css("justify-self", "center");
+				$btn.css("width", "fit-content");
+			});
 
-      const createDPadControl = (controlName, buttons, size = "100%") => {
-        const $container = $('<div style="flex: 1" />');
-        $container.append($(`<wz-label style="text-align: center">${controlName}</wz-label>`));
-        $container.append(createDPadJoystick(buttons, size));
-        return $container;
-      };
+			root.css("aspect-ratio", "1");
+			root.css("max-width", size);
+			root.css("background-color", "var(--surface_default)");
+			root.css("border-radius", "50%");
+			root.css("overflow", "hidden");
+			return root;
+		};
 
-      const joysticksContainers = $('<div class="form-group" style="display: flex; gap: 12px" />');
-      joysticksContainers.append(
-        createDPadControl("Cameras", [
-          { name: DPAD_AREA.Up, handler: createUCamera },
-          { name: DPAD_AREA.Down, handler: createDCamera },
-          { name: DPAD_AREA.Left, handler: createLCamera },
-          { name: DPAD_AREA.Right, handler: createRCamera },
-          { name: DPAD_AREA.Middle, handler: () => null, isSelectable: false, icon: "speed-camera" },
-        ])
-      );
-      joysticksContainers.append(
-        createDPadControl("Arrows", [
-          { name: DPAD_AREA.Up, handler: createSArrow },
-          { name: "DUMMY", handler: () => null, isSelectable: false },
-          { name: DPAD_AREA.Left, icon: "turn-left", handler: createLArrow },
-          { name: DPAD_AREA.Right, icon: "turn-right", handler: createRArrow },
-          { name: DPAD_AREA.Middle, icon: "pencil", handler: createCustomArrow },
-        ])
-      );
+		const createDPadControl = (controlName, buttons, size = "100%") => {
+			const $container = $('<div style="flex: 1" />');
+			$container.append($(`<wz-label style="text-align: center">${controlName}</wz-label>`));
+			$container.append(createDPadJoystick(buttons, size));
+			return $container;
+		};
 
-      controlsDiv.append(joysticksContainers);
+		const joysticksContainers = $('<div class="form-group" style="display: flex; gap: 12px" />');
+		joysticksContainers.append(
+			createDPadControl("Cameras", [
+				{ name: DPAD_AREA.Up, handler: createUCamera },
+				{ name: DPAD_AREA.Down, handler: createDCamera },
+				{ name: DPAD_AREA.Left, handler: createLCamera },
+				{ name: DPAD_AREA.Right, handler: createRCamera },
+				{ name: DPAD_AREA.Middle, handler: () => null, isSelectable: false, icon: "speed-camera" },
+			])
+		);
+		joysticksContainers.append(
+			createDPadControl("Arrows", [
+				{ name: DPAD_AREA.Up, handler: createSArrow },
+				{ name: "DUMMY", handler: () => null, isSelectable: false },
+				{ name: DPAD_AREA.Left, icon: "turn-left", handler: createLArrow },
+				{ name: DPAD_AREA.Right, icon: "turn-right", handler: createRArrow },
+				{ name: DPAD_AREA.Middle, icon: "pencil", handler: createCustomArrow },
+			])
+		);
 
-      mainDiv.append(controlsDiv);
-      regionDiv.append(mainDiv);
-      lockRegion.before(regionDiv);
-    }
-  }
+		lockRegion.before(joysticksContainers);
+	}
 
   async function createComment(geoJSONGeometry) {
     return wmeSdk.DataModel.MapComments.addMapComment({
@@ -727,7 +724,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     intLanguageStrings();
 
     W.selectionManager.events.register("selectionchanged", null, addWMESelectSegmentbutton);
-    W.selectionManager.events.register("selectionchanged", null, addWMEMCbutton);
+    W.selectionManager.events.register("selectionchanged", null, addControlsToMapCommentEditPanel);
   }
 
   WMEMapCommentGeometry_bootstrap();
