@@ -608,7 +608,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
       // Add comment width to section
       const mapNoteWidthContainer = $('<div class="form-group" />');
-      mapNoteWidthContainer.append($("<wz-label>Map Note Width</wz-label>"));
+      mapNoteWidthContainer.append($("<wz-label>Element Width</wz-label>"));
       const mapNoteWidthControls = $('<div style="display: flex; flex-wrap: wrap; gap: 4px 12px;" />');
       mapNoteWidthControls.append(selCommentWidth);
 
