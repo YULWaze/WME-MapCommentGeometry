@@ -6,12 +6,12 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			https://github.com/WazeSpace/wme-sdk-plus/releases/download/v1.0.2/wme-sdk-plus.min.js
+// @require			https://davidsl4.github.io/WMEScripts/lib/wme-sdk-plus.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2025.03.23.1
+// @version 		2025.03.24.1
 // ==/UserScript==
 
 /* global W */
@@ -53,7 +53,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 (async function () {
   await SDK_INITIALIZED;
-  const UPDATE_NOTES = "Added ability to infer width from selected segment";
+  const UPDATE_NOTES = "Added ability to create school zones and places";
   const SCRIPT_NAME = GM_info.script.name;
   const SCRIPT_VERSION = GM_info.script.version;
   const idTitle = 0;
