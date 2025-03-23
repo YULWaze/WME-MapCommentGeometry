@@ -554,6 +554,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
             camera: 'camera',
             schoolZone: 'school zone',
           },
+          venue: 'place',
           [defaultSymbol]: 'feature',
         };
 
@@ -661,6 +662,15 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           return {
             type: 'mapComment',
             id: wmeSdk.DataModel.MapComments.addMapComment({
+              geometry,
+            }),
+          }
+        }),
+        createNewFeatureButton('venue', (geometry) => {
+          return {
+            type: 'venue',
+            id: wmeSdk.DataModel.Venues.addVenue({
+              category: 'OTHER',
               geometry,
             }),
           }
