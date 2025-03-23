@@ -537,17 +537,8 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     var langText;
 
     function addWMESelectSegmentbutton() {
-      // 2024-03-29 from WME UR-MP tracking
-      const f = W.selectionManager.getSelectedFeatures();
-
-      if (f.length === 0) {
-        return null;
-      }
-
-      // 2013-04-19: Catch exception
-      try {
-        if (document.getElementById("MapCommentGeo") !== null) return;
-      } catch (e) {}
+      if (!wmeSdk.Editing.getSelection()) return;
+      if (document.getElementById("MapCommentGeo") !== null) return; // duplicate avoidance
 
       // Add button
       const createMapNoteBtn = $(
