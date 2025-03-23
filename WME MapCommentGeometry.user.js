@@ -337,7 +337,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     const selection = wmeSdk.Editing.getSelection();
     if (!selection) {
       console.warn('updateSelectedFeatureGeometry has been called without active selection');
-      return;
+      return false;
     }
 
     if (selection.ids.length > 1) {
@@ -356,8 +356,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         break;
       default:
         console.error('updateSelectedFeatureGeometry has been called but the selected feature is not supported: ' + selection.objectType);
-        return;
+        return false;
     }
+
+    return true;
   }
 
   function getGeometryOfSelection() {
@@ -542,59 +544,48 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       if (!wmeSdk.Editing.getSelection()) return;
       if (document.getElementById("MapCommentGeo") !== null) return; // duplicate avoidance
 
-      // Add button
-      const createMapNoteBtn = $(
-        `<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(idNewMapComment)}</wz-button>`
-      );
-      createMapNoteBtn.click((e) => {
-        e.target.blur();
-				const mapCommentId = wmeSdk.DataModel.MapComments.addMapComment({
-					geometry: getGeometryOfSelection(),
-				});
-				wmeSdk.Editing.setSelection({
-					selection: {
-						ids: [mapCommentId],
-						objectType: 'mapComment',
-					},
-				});
-      });
+      function getFeatureHumanReadableName(type) {
+        const defaultSymbol = Symbol.for('DEFAULT');
+        const names = {
+          segment: 'road',
+          mapComment: 'map note',
+          permanentHazard: {
+            [defaultSymbol]: 'hazard',
+            camera: 'camera',
+            schoolZone: 'school zone',
+          },
+          [defaultSymbol]: 'feature',
+        };
 
-      const useMapNoteBtn = $(
-        `<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(
-          idExistingMapComment
-        )}</wz-button>`
-      );
-      useMapNoteBtn.click(async (e) => {
-        e.target.blur();
-        e.target.disabled = true;
-        const selectionGeometry = getGeometryOfSelection();
-        const snackbar = createSnackbar({
-          label: 'Select an existing map comment to update its geometry',
-          closeAutomatically: false,
-          showCloseButton: false,
-          button: {
-            label: 'Cancel',
-          }
-        });
-        snackbar.show();
-
-        try {
-          const mapCommentId = await Promise.race([
-            waitForMapCommentSelection(),
-            waitForEvent(snackbar.button, 'click').then(() => {
-              throw new Error('CANCELLED');
-            }),
-          ]);
-          if (!mapCommentId) return;
-          wmeSdk.DataModel.MapComments.updateMapComment({
-            mapCommentId,
-            geometry: selectionGeometry,
-          })
-        } catch {} finally {
-          e.target.disabled = false;
-          snackbar.remove();
+        const parts = type.split('.');
+        let current = names;
+        for (const part of parts) {
+          if (!current[part]) return names[Symbol.for('DEFAULT')];
+          current = current[part];
         }
-      });
+
+        return current;
+      }
+
+      const createNewFeatureButton = (featureType, addNewFeature) => {
+        const $createBtn = $(
+          `<wz-button style="--space-button-text: 100%;" size="sm" color="text">Create ${getFeatureHumanReadableName(featureType)}</wz-button>`
+        );
+        $createBtn.click((e) => e.target.blur()); // Prevent focus on the button
+        $createBtn.click(() => {
+          const geometry = getGeometryOfSelection();
+          const newFeature = addNewFeature(geometry);
+          wmeSdk.Editing.setSelection({
+            selection: {
+              ids: [newFeature.id],
+              objectType: newFeature.type,
+            },
+          });
+        });
+
+        return $createBtn;
+      }
+
 
       // Add dropdown for comment width
       const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
@@ -617,9 +608,73 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       // Add comment width to section
       const mapNoteWidthContainer = $('<div class="form-group" />');
       mapNoteWidthContainer.append($("<wz-label>Map Note Width</wz-label>"));
-      const mapNoteWidthControls = $('<div style="display: flex; gap: 12px;" />');
+      const mapNoteWidthControls = $('<div style="display: flex; flex-wrap: wrap; gap: 12px 4px;" />');
       mapNoteWidthControls.append(selCommentWidth);
-      mapNoteWidthControls.append(createMapNoteBtn, useMapNoteBtn);
+
+      const $useBtn = $(
+        `<wz-button style="--space-button-text: 100%;" size="sm" color="text">${getString(
+          idExistingMapComment
+        )}</wz-button>`
+      );
+      $useBtn.click((e) => e.target.blur()); // Prevent focus on the button
+      $useBtn.click(async (e) => {
+        e.target.blur();
+        e.target.disabled = true;
+        const selectionGeometry = getGeometryOfSelection();
+        const snackbar = createSnackbar({
+          label: `Select an existing object to update its geometry`,
+          closeAutomatically: false,
+          showCloseButton: false,
+          button: {
+            label: 'Cancel',
+          }
+        });
+        snackbar.show();
+
+        try {
+          await Promise.race([
+            wmeSdk.Events.once({
+              eventName: "wme-selection-changed",
+            }),
+            waitForEvent(snackbar.button, 'click').then(() => {
+              throw new Error('CANCELLED');
+            }),
+          ]);
+
+          const selection = wmeSdk.Editing.getSelection();
+          if (!selection) return;
+
+          const isUpdated = updateSelectedFeatureGeometry(selectionGeometry);
+          if (!isUpdated) {
+            createSnackbar({
+              label: `Unable to update the ${getFeatureHumanReadableName(selection.objectType)}`,
+            }).show();
+          }
+        } catch {} finally {
+          e.target.disabled = false;
+          snackbar.remove();
+        }
+      });
+      mapNoteWidthControls.append(
+        $useBtn,
+        createNewFeatureButton('mapComment', (geometry) => {
+          return {
+            type: 'mapComment',
+            id: wmeSdk.DataModel.MapComments.addMapComment({
+              geometry,
+            }),
+          }
+        }),
+        createNewFeatureButton('permanentHazard.schoolZone', (geometry) => {
+          return {
+            type: 'permanentHazard',
+            id: wmeSdk.DataModel.PermanentHazards.addSchoolZone({
+              geometry,
+            }),
+          }
+        }),
+      );
+
       mapNoteWidthContainer.append(mapNoteWidthControls);
       rootContainer.append(mapNoteWidthContainer);
 
