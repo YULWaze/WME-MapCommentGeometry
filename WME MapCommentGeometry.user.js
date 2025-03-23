@@ -296,16 +296,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 		lockRegion.before(joysticksContainers);
 	}
 
-  function updateCommentGeometry(geoJSONGeometry, mapComment) {
-    if (!mapComment) {
-      if (!WazeWrap.hasMapCommentSelected()) return;
-      mapComment = WazeWrap.getSelectedDataModelObjects()[0];
-    }
-
-    let UO = require("Waze/Action/UpdateObject");
-    W.model.actionManager.add(new UO(mapComment, { geoJSONGeometry }));
-  }
-
   async function waitForMapCommentSelection() {
     if (hasSelectedFeatures('mapComment')) return wmeSdk.Editing.getSelection().ids[0];
 
@@ -341,33 +331,55 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     return turf.union(turf.featureCollection([surroundedLine, arrowHead])).geometry;
   }
 
+  function getSelectedMapComment() {
+    const selection = wmeSdk.Editing.getSelection();
+    if (!selection || selection.objectType !== 'mapComment') return null;
+
+    const mapComment = wmeSdk.DataModel.MapComments.getById({ mapCommentId: selection.ids[0].toString() });
+    return mapComment;
+  }
+
+  function updateSelectedMapCommentGeometry(geometry) {
+    wmeSdk.DataModel.MapComments.updateMapComment({
+      mapCommentId: getSelectedMapComment().id,
+      geometry,
+    });
+  }
+
+  function applyShapeToSelectedMapComment(shapePoints) {
+    const selectedMapComment = getSelectedMapComment();
+    const mapCommentCentroid = turf.centroid(selectedMapComment.geometry).geometry;
+    const openLayersCentroid = W.userscripts.toOLGeometry(mapCommentCentroid);
+    updateSelectedMapCommentGeometry(getShapeWKT(shapePoints, openLayersCentroid));
+  }
+
   function createLCamera() {
-    updateCommentGeometry(getShapeWKT(CameraLeftPoints));
+    applyShapeToSelectedMapComment(CameraLeftPoints);
   }
   function createUCamera() {
-    updateCommentGeometry(getShapeWKT(CameraUpPoints));
+    applyShapeToSelectedMapComment(CameraUpPoints);
   }
   function createRCamera() {
-    updateCommentGeometry(getShapeWKT(CameraRightPoints));
+    applyShapeToSelectedMapComment(CameraRightPoints);
   }
   function createDCamera() {
-    updateCommentGeometry(getShapeWKT(CameraDownPoints));
+    applyShapeToSelectedMapComment(CameraDownPoints);
   }
 
   function createLArrow() {
-    updateCommentGeometry(getShapeWKT(ArrowLeftPoints));
+    applyShapeToSelectedMapComment(ArrowLeftPoints);
   }
   function createSArrow() {
-    updateCommentGeometry(getShapeWKT(ArrowStraightPoints));
+    applyShapeToSelectedMapComment(ArrowStraightPoints);
   }
   function createRArrow() {
-    updateCommentGeometry(getShapeWKT(ArrowRightPoints));
+    applyShapeToSelectedMapComment(ArrowRightPoints);
   }
   async function createCustomArrow() {
     const drawnLine = await wmeSdk.Map.drawLine();
     const curvedLine = turf.bezierSpline(drawnLine, { sharpness: 0.1 }).geometry;
     const arrowGeometry = convertLineToArrow(curvedLine);
-    updateCommentGeometry(arrowGeometry);
+    updateSelectedMapCommentGeometry(arrowGeometry);
   }
 
   function getShapeWKT(points, center) {
