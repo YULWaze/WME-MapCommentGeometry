@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ad92c4af-3ab8-4beb-8f17-872c4cdfab1c" name="Changes" comment="chore: update release notes" />
+    <list id="f6ff8dd5-1e58-4956-af1e-838098e02b99" name="IDE" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="7e6cc219b6b40308b5fd497fc6caf222b61feab6" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
+  </component>
+  <component name="GitRewordedCommitMessages">
+    <option name="onto" value="7431495591b56bf4cbae62e50a74a6489c04e7be" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="2qqaCfoYgfC328SX9rSDBKhmyUA" />
+  <component name="ProjectViewState">
+    <option name="autoscrollToSource" value="true" />
+    <option name="compactDirectories" value="true" />
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/r0den/WebstormProjects/waze.nosync/WME-MapCommentGeometry&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.general&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-WS-243.25659.40" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="ShelveChangesManager">
+    <option name="remove_strategy" value="true" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ad92c4af-3ab8-4beb-8f17-872c4cdfab1c" name="Changes" comment="" />
+      <changelist id="f6ff8dd5-1e58-4956-af1e-838098e02b99" name="IDE" comment="" />
+      <created>1735392432234</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1735392432234</updated>
+      <workItem from="1735392433549" duration="1478000" />
+      <workItem from="1735393915038" duration="19083000" />
+      <workItem from="1742742557926" duration="3767000" />
+    </task>
+    <task id="LOCAL-00001" summary="refactor: extract selection geometry implementation">
+      <option name="closed" value="true" />
+      <created>1735392703787</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1735392703787</updated>
+    </task>
+    <task id="LOCAL-00002" summary="feat: accept map comment model for update&#10;&#10;Allows to directly pass a map comment model to the `updateCommentGeometry`, instead of updating the selected map comment">
+      <option name="closed" value="true" />
+      <created>1735392857773</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1735392857773</updated>
+    </task>
+    <task id="LOCAL-00003" summary="feat: accept map comment model for update&#10;&#10;Allows to directly pass a map comment model to the `updateCommentGeometry`, instead of updating the selected map comment">
+      <option name="closed" value="true" />
+      <created>1735393797277</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1735393797277</updated>
+    </task>
+    <task id="LOCAL-00004" summary="refactor: separate shape to map and map comment update processes">
+      <option name="closed" value="true" />
+      <created>1735395555256</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1735395555256</updated>
+    </task>
+    <task id="LOCAL-00005" summary="feat: configure wme sdk">
+      <option name="closed" value="true" />
+      <created>1735395595871</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1735395595871</updated>
+    </task>
+    <task id="LOCAL-00006" summary="feat: allow both directly creating map comments and selecting existing">
+      <option name="closed" value="true" />
+      <created>1735395631115</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1735395631115</updated>
+    </task>
+    <task id="LOCAL-00007" summary="feat: allow merging multiple segments' geometry&#10;&#10;New utility functions added:&#10;- getSegmentsPath: Returns the segments in the travel order required to go from one edge to another (also returns the direction for each segment)&#10;- mergeSegmentsGeometry: Using the `getSegmentsPath` to create a unified, merged geometry out of all given segments">
+      <option name="closed" value="true" />
+      <created>1735404649327</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1735404649327</updated>
+    </task>
+    <task id="LOCAL-00008" summary="refactor: accept &amp; return GeoJSON instead of OL geometry&#10;&#10;GeoJSON is a representation of geometries, and therefore will be more widely supported in the future in WME. If a function needs OL to work, let them convert the GeoJSON representation to an OL models">
+      <option name="closed" value="true" />
+      <created>1735405156153</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1735405156153</updated>
+    </task>
+    <task id="LOCAL-00009" summary="feat: incorporate turf.js to convert geometries to landmarks&#10;&#10;Result: Less obsolete code, nicer and smoother geometries.">
+      <option name="closed" value="true" />
+      <created>1735406655118</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1735406655118</updated>
+    </task>
+    <task id="LOCAL-00010" summary="feat: add turf.js as a dependency">
+      <option name="closed" value="true" />
+      <created>1735406794798</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1735406794798</updated>
+    </task>
+    <task id="LOCAL-00011" summary="feat: incorporate turf.js to convert geometries to landmarks&#10;&#10;Result: Less obsolete code, nicer and smoother geometries.">
+      <option name="closed" value="true" />
+      <created>1735408788195</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1735408788195</updated>
+    </task>
+    <task id="LOCAL-00012" summary="refactor: add middle button to dpads">
+      <option name="closed" value="true" />
+      <created>1735413006504</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1735413006504</updated>
+    </task>
+    <task id="LOCAL-00013" summary="feat: add middle button to dpads">
+      <option name="closed" value="true" />
+      <created>1735413055551</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1735413055551</updated>
+    </task>
+    <task id="LOCAL-00014" summary="feat: allow drawing custom arrows">
+      <option name="closed" value="true" />
+      <created>1735413082860</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1735413082860</updated>
+    </task>
+    <task id="LOCAL-00015" summary="refactor: replace WS libs with wme-sdk-plus&#10;&#10;This serves a more clean code, which might support drop-in replacements for future SDK versions">
+      <option name="closed" value="true" />
+      <created>1742743308777</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1742743308777</updated>
+    </task>
+    <task id="LOCAL-00016" summary="feat: add option to &quot;infer&quot; segment's width">
+      <option name="closed" value="true" />
+      <created>1742745369672</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1742745369672</updated>
+    </task>
+    <task id="LOCAL-00017" summary="feat: add option to &quot;infer&quot; segment's width">
+      <option name="closed" value="true" />
+      <created>1742745475759</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1742745475759</updated>
+    </task>
+    <task id="LOCAL-00018" summary="chore: update release notes">
+      <option name="closed" value="true" />
+      <created>1742745777286</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1742745777286</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="refactor: extract selection geometry implementation" />
+    <MESSAGE value="refactor: extract selection's geometry extraction to its own function" />
+    <MESSAGE value="refactor: extract selection's geometry extraction to its own function" />
+    <MESSAGE value="stash" />
+    <MESSAGE value="refactor: separate shape to map and map comment update processes" />
+    <MESSAGE value="feat: configure wme sdk" />
+    <MESSAGE value="feat: allow both directly creating map comments and selecting existing" />
+    <MESSAGE value="feat: allow merging multiple segments' geometry&#10;&#10;New utility functions added:&#10;- getSegmentsPath: Returns the segments in the travel order required to go from one edge to another (also returns the direction for each segment)&#10;- mergeSegmentsGeometry: Using the `getSegmentsPath` to create a unified, merged geometry out of all given segments" />
+    <MESSAGE value="refactor: accept &amp; return GeoJSON instead of OL geometry&#10;&#10;GeoJSON is a representation of geometries, and therefore will be more widely supported in the future in WME. If a function needs OL to work, let them convert the GeoJSON representation to an OL models" />
+    <MESSAGE value="feat: add turf.js as a dependency" />
+    <MESSAGE value="feat: add arrow heads" />
+    <MESSAGE value="feat: incorporate turf.js to convert geometries to landmarks&#10;&#10;Result: Less obsolete code, nicer and smoother geometries." />
+    <MESSAGE value="refactor: add middle button to dpads" />
+    <MESSAGE value="feat: add middle button to dpads" />
+    <MESSAGE value="feat: add middle button to dpads" />
+    <MESSAGE value="feat: allow drawing custom arrows" />
+    <MESSAGE value="refactor: replace WS libs with wme-sdk-plus&#10;&#10;This serves a more clean code, which might support drop-in replacements for future SDK versions" />
+    <MESSAGE value="feat: add option to &quot;infer&quot; segment's width" />
+    <MESSAGE value="chore: update release notes" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: update release notes" />
+  </component>
+</project>
