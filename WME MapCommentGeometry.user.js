@@ -354,6 +354,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       case 'permanentHazard':
         updatePermanentHazard(selection.ids[0], { geometry: newGeometry });
         break;
+      case 'venue':
+        wmeSdk.DataModel.Venues.updateVenue({
+          venueId: selection.ids[0].toString(),
+          geometry: newGeometry,
+        });
       default:
         console.error('updateSelectedFeatureGeometry has been called but the selected feature is not supported: ' + selection.objectType);
         return false;
