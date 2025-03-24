@@ -477,7 +477,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       show: () => $snackbarContainer[0].showSnackbar(),
       hide: () => $snackbarContainer[0].hideSnackbar(),
       remove: () => $snackbarContainer.remove(),
-      button: $btn[0],
+      button: $btn?.[0] || null,
     }
   }
 
