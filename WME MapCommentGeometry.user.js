@@ -561,7 +561,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         const parts = type.split('.');
         let current = names;
         for (const part of parts) {
-          if (!current[part]) return names[Symbol.for('DEFAULT')];
+          if (!current[part]) return current[defaultSymbol] || names[defaultSymbol];
           current = current[part];
         }
 
