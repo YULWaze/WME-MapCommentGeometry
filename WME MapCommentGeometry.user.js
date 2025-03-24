@@ -655,7 +655,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
               snackbar.remove();
             }, 5000);
           }
-        } catch {} finally {
+        } catch (e) {
+          if (!(e instanceof Error)) throw e;
+          if (e.message !== 'CANCELLED') throw e;
+        } finally {
           e.target.disabled = false;
           snackbar.remove();
         }
