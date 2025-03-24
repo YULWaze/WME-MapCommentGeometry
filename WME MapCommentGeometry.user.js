@@ -647,9 +647,13 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
           const isUpdated = updateSelectedFeatureGeometry(selectionGeometry);
           if (!isUpdated) {
-            createSnackbar({
+            const snackbar = createSnackbar({
               label: `Unable to update the ${getFeatureHumanReadableName(selection.objectType)}`,
-            }).show();
+            });
+            snackbar.show();
+            setTimeout(() => {
+              snackbar.remove();
+            }, 5000);
           }
         } catch {} finally {
           e.target.disabled = false;
