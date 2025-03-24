@@ -11,7 +11,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2025.03.24.2
+// @version 		2025.03.24.3
 // ==/UserScript==
 
 /* global W */
@@ -570,7 +570,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           current = current[part];
         }
 
-        return current;
+        return current[defaultSymbol] || current;
       }
 
       function getFeatureGeometryOptions(type) {
@@ -591,7 +591,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           current = current[part];
         }
 
-        return current;
+        return current[defaultSymbol] || current;
       }
 
       const createNewFeatureButton = (featureType, addNewFeature, geometryOptions) => {
