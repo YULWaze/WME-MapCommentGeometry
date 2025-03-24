@@ -568,13 +568,34 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         return current;
       }
 
-      const createNewFeatureButton = (featureType, addNewFeature) => {
+      function getFeatureGeometryOptions(type) {
+        const defaultSymbol = Symbol.for('DEFAULT');
+        const options = {
+          permanentHazard: {
+            [defaultSymbol]: {
+              strictBoundary: true,
+            },
+          },
+          [defaultSymbol]: {},
+        };
+
+        const parts = type.split('.');
+        let current = options;
+        for (const part of parts) {
+          if (!current[part]) return current[defaultSymbol] || options[defaultSymbol];
+          current = current[part];
+        }
+
+        return current;
+      }
+
+      const createNewFeatureButton = (featureType, addNewFeature, geometryOptions) => {
         const $createBtn = $(
           `<wz-button style="--space-button-text: 100%;" size="sm" color="text">Create ${getFeatureHumanReadableName(featureType)}</wz-button>`
         );
         $createBtn.click((e) => e.target.blur()); // Prevent focus on the button
         $createBtn.click(() => {
-          const geometry = getGeometryOfSelection();
+          const geometry = getGeometryOfSelection(geometryOptions);
           const newFeature = addNewFeature(geometry);
           wmeSdk.Editing.setSelection({
             selection: {
@@ -621,7 +642,6 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       $useBtn.click(async (e) => {
         e.target.blur();
         e.target.disabled = true;
-        const selectionGeometry = getGeometryOfSelection();
         const snackbar = createSnackbar({
           label: `Select an existing object to update its geometry`,
           closeAutomatically: false,
@@ -631,6 +651,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           }
         });
         snackbar.show();
+
+        // Once the user selects an object, we'll no longer have access to the currently selected features
+        // And to the edit panel improvements we've added, so we need to "cache" the geometry and width
+        const segmentsLineString = getSelectedSegmentsMergedLineString();
+        const userSelectedWidth = getUserSelectedWidth();
 
         try {
           await Promise.race([
@@ -645,7 +670,11 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           const selection = wmeSdk.Editing.getSelection();
           if (!selection) return;
 
-          const isUpdated = updateSelectedFeatureGeometry(selectionGeometry);
+        const selectionGeometry = getGeometryForLineString(segmentsLineString, {
+          width: userSelectedWidth,
+          ...getFeatureGeometryOptions(selection.objectType)
+        });
+        const isUpdated = updateSelectedFeatureGeometry(selectionGeometry);
           if (!isUpdated) {
             const snackbar = createSnackbar({
               label: `Unable to update the ${getFeatureHumanReadableName(selection.objectType)}`,
@@ -672,7 +701,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
               geometry,
             }),
           }
-        }),
+        }, getFeatureGeometryOptions('mapComment')),
         createNewFeatureButton('venue', (geometry) => {
           return {
             type: 'venue',
@@ -681,7 +710,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
               geometry,
             }),
           }
-        }),
+        }, getFeatureGeometryOptions('venue')),
         createNewFeatureButton('permanentHazard.schoolZone', (geometry) => {
           return {
             type: 'permanentHazard',
@@ -689,7 +718,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
               geometry,
             }),
           }
-        }),
+        }, getFeatureGeometryOptions('permanentHazard.schoolZone')),
       );
 
       mapNoteWidthContainer.append(mapNoteWidthControls);
@@ -777,7 +806,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         (nodeId) => wmeSdk.DataModel.Nodes.getById({ nodeId }).connectedSegmentIds
       );
 
-      return segmentsPath.reduce((points, { segmentId, direction }) => {
+      const coordinates = segmentsPath.reduce((points, { segmentId, direction }) => {
         const segment = wmeSdk.DataModel.Segments.getById({ segmentId });
         const segmentGeometry = segment.geometry.coordinates;
         if (direction === "rev") segmentGeometry.reverse();
@@ -786,16 +815,24 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         if (points.length > 0) points.pop();
         return points.concat(segmentGeometry);
       }, []);
+
+      return {
+        type: 'LineString',
+        coordinates,
+      };
     }
 
-    function getGeometryForSegments(segments, width) {
-      const mergedGeometryCoordinates = mergeSegmentsGeometry(segments.map((segment) => segment.attributes.id));
-      const mergedGeoJSONGeometry = {
-        type: "LineString",
-        coordinates: mergedGeometryCoordinates,
-      };
+    function getGeometryForLineString(lineString, options) {
+      if (options.strictBoundary) {
+        lineString = turf.lineSliceAlong(
+          lineString,
+          options.width / 2 + 1, // spare an extra meter
+          turf.length(lineString, { units: 'meters' }) - options.width / 2 - 1, // spare an extra meter
+          { units: 'meters' },
+        );
+      }
 
-      return convertToLandmark(mergedGeoJSONGeometry, width);
+      return convertToLandmark(lineString, options.width);
     }
 
     function ensureMetricUnits(value) {
@@ -836,37 +873,43 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       return Math.round(averageWidth);
     }
 
-    function getGeometryOfSelection(width) {
-      if (!width || isNaN(width)) {
-        const selCommentWidth = document.getElementById("CommentWidth");
-        if (selCommentWidth.value === "SEG_WIDTH") {
-          const selection = wmeSdk.Editing.getSelection();
-          if (!selection || selection.objectType !== "segment") {
-            console.error("No road selected!");
-            return null;
-          }
-
-          width = getWidthOfSegments(selection.ids);
-          setlastCommentWidth(NaN);
-        } else {
-          width = parseInt(selCommentWidth.value, 10);
-          setlastCommentWidth(width);
-        }
-      }
-
-      console.log(`Comment width: ${width}`);
-
-      const selectedFeatures = W.selectionManager.getSelectedFeatures();
-      if (selectedFeatures.length === 0) {
-        console.error("No road selected!");
+    function getSelectedSegmentsMergedLineString() {
+      const selection = wmeSdk.Editing.getSelection();
+      if (!selection || selection.objectType !== "segment") {
+        console.error('getSelectedSegmentsMergedLineString has been called without active segment selection');
         return null;
       }
 
-      const segments = selectedFeatures
-        .map((feature) => feature._wmeObject)
-        .filter((object) => object.type === "segment");
+      return mergeSegmentsGeometry(selection.ids);
+    }
 
-      return getGeometryForSegments(segments, width);
+    function getGeometryOfSelection(options) {
+      if (!options.width || isNaN(options.width)) {
+        options.width = getUserSelectedWidth();
+      }
+
+      console.log(`Comment width: ${options.width}`);      
+
+      return getGeometryForLineString(getSelectedSegmentsMergedLineString(), options);
+    }
+
+    function getUserSelectedWidth() {
+      const selCommentWidth = document.getElementById("CommentWidth");
+      if (selCommentWidth.value === "SEG_WIDTH") {
+        const selection = wmeSdk.Editing.getSelection();
+        if (!selection || selection.objectType !== "segment") {
+          console.error("No road selected!");
+          return null;
+        }
+
+        const width = getWidthOfSegments(selection.ids);
+        setlastCommentWidth(NaN);
+        return width;
+      } else {
+        const width = parseInt(selCommentWidth.value, 10);
+        setlastCommentWidth(width);
+        return width;
+      }
     }
 
     /**
