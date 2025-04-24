@@ -629,12 +629,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       selCommentWidth[0].shadowRoot.adoptedStyleSheets.push(selCommentWidthStyles);
 
       // Add MapCommentGeo section
-      const rootContainer = $('<section id="MapCommentGeo" />');
-      rootContainer.append($('<div class="form-group" />')); // add an empty form group just for the margin above
+      const rootContainer = $('<div id="MapCommentGeo" />');
 
       // Add comment width to section
-      const mapNoteWidthContainer = $('<div class="form-group" />');
-      mapNoteWidthContainer.append($("<wz-label>Element Width</wz-label>"));
+      rootContainer.append($("<wz-label>Element Width</wz-label>"));
       const mapNoteWidthControls = $('<div style="display: flex; flex-wrap: wrap; gap: 4px 12px;" />');
       mapNoteWidthControls.append(selCommentWidth);
 
@@ -726,8 +724,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         }, getFeatureGeometryOptions('permanentHazard.schoolZone')),
       );
 
-      mapNoteWidthContainer.append(mapNoteWidthControls);
-      rootContainer.append(mapNoteWidthContainer);
+      rootContainer.append(mapNoteWidthControls);
 
       $("#segment-edit-general").append(rootContainer);
 
