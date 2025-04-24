@@ -629,7 +629,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       selCommentWidth[0].shadowRoot.adoptedStyleSheets.push(selCommentWidthStyles);
 
       // Add MapCommentGeo section
-      const rootContainer = $('<section id="MapCommentGeo" />');
+      const rootContainer = $('<div id="MapCommentGeo" />');
 
       // Add comment width to section
       rootContainer.append($("<wz-label>Element Width</wz-label>"));
