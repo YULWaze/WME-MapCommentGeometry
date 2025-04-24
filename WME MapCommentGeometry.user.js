@@ -980,8 +980,18 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
     intLanguageStrings();
 
-    W.selectionManager.events.register("selectionchanged", null, addWMESelectSegmentbutton);
-    W.selectionManager.events.register("selectionchanged", null, addControlsToMapCommentEditPanel);
+    const addFeatureEditorOpenedHandler = (featureType, handler) => {
+      wmeSdk.Events.on({
+        eventName: "wme-feature-editor-opened",
+        eventHandler: (e) => {
+          if (e.featureType !== featureType) return;
+          handler(e);
+        }
+      });
+    }
+
+    addFeatureEditorOpenedHandler('segment', addWMESelectSegmentbutton);
+    addFeatureEditorOpenedHandler('mapComment', addControlsToMapCommentEditPanel);
   }
 
   WMEMapCommentGeometry_bootstrap();
