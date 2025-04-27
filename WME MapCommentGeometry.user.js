@@ -989,6 +989,14 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
     addFeatureEditorOpenedHandler('segment', addWMESelectSegmentbutton);
     addFeatureEditorOpenedHandler('mapComment', addControlsToMapCommentEditPanel);
+    switch (wmeSdk.Editing.getSelection()?.objectType) {
+      case "segment":
+        addWMESelectSegmentbutton();
+        break;
+      case "mapComment":
+        addControlsToMapCommentEditPanel();
+        break;
+    }
   }
 
   WMEMapCommentGeometry_bootstrap();
