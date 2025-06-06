@@ -855,10 +855,10 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       }
 
       const segmentAddress = wmeSdk.DataModel.Segments.getAddress({ segmentId });
-      const defaultLaneWidth =
-        (segmentAddress.country.defaultLaneWidthPerRoadType
-          ? segmentAddress.country.defaultLaneWidthPerRoadType[segment.roadType]
-          : 330) / 100;
+      const defaultLaneWidth = (
+        segmentAddress.country.defaultLaneWidthPerRoadType?.[segment.roadType]
+        ?? 330
+      ) / 100;
 
       const averageNumberOfLanes =
         ((segment.fromLanesInfo?.numberOfLanes || 1) + (segment.toLanesInfo?.numberOfLanes || 1)) / 2;
