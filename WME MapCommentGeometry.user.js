@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name 			WME MapCommentGeometry
 // @author			YUL_
-// @description 	This script creates a map note around a single selected road segment. It also allows you to create a camera or an arrow shaped note.
+// @description 	This script allows creating various map features around selected road segments. Additionally, it allows creating map comments shaped as cameras and arrows.
 // @match			*://*.waze.com/*editor*
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
