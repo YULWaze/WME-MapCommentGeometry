@@ -11,7 +11,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2025.06.06.1
+// @version 		2025.09.29.1
 // ==/UserScript==
 
 /* global W */
@@ -617,11 +617,15 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       // Add dropdown for comment width
       const selCommentWidth = $('<wz-select id="CommentWidth" style="flex: 1" />');
       selCommentWidth.append($('<wz-option value="SEG_WIDTH">Infer</wz-option>'));
-      selCommentWidth.append($('<wz-option value="5">5 m</wz-option>'));
+//      selCommentWidth.append($('<wz-option value="5">5 m</wz-option>'));
       selCommentWidth.append($('<wz-option value="10">10 m</wz-option>'));
-      selCommentWidth.append($('<wz-option value="15">15 m</wz-option>'));
+//      selCommentWidth.append($('<wz-option value="15">15 m</wz-option>'));
       selCommentWidth.append($('<wz-option value="20">20 m</wz-option>'));
-      selCommentWidth.append($('<wz-option value="25">25 m</wz-option>'));
+//      selCommentWidth.append($('<wz-option value="25">25 m</wz-option>'));
+      selCommentWidth.append($('<wz-option value="30">30 m</wz-option>'));
+      selCommentWidth.append($('<wz-option value="40">40 m</wz-option>'));
+      selCommentWidth.append($('<wz-option value="50">50 m</wz-option>'));
+      selCommentWidth.append($('<wz-option value="100">100 m</wz-option>'));
       const widthToSelect = getLastCommentWidth(NaN);
       selCommentWidth.attr("value", isNaN(widthToSelect) ? "SEG_WIDTH" : widthToSelect);
       const selCommentWidthStyles = new CSSStyleSheet();
