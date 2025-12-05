@@ -893,7 +893,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
       if (userSettings && !userSettings.isImperial) return value;
 
       const conversionFactor = 0.3048; // 1 foot = 0.3048 meters
-      return Math.round(imperialValue * conversionFactor);
+      return Math.round(value * conversionFactor);
     }
 
     function getSegmentWidth(segmentId) {
