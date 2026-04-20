@@ -6,7 +6,7 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			https://cdn.jsdelivr.net/gh/TheEditorX/wme-sdk-plus@1.2/wme-sdk-plus.js
+// @require			https://cdn.jsdelivr.net/gh/TheEditorX/wme-sdk-plus@1.3/wme-sdk-plus.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
@@ -62,7 +62,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
   const wmeSdk = getWmeSdk({ scriptId: "wme-map-comment-geometry", scriptName: "WME Map Comment Geometry" });
   if (!wmeSdk.State.isInitialized())
     await wmeSdk.Events.once({ eventName: "wme-initialized" });
-  initWmeSdkPlus(wmeSdk);
+  await initWmeSdkPlus(wmeSdk);
 
   const CameraLeftPoints = [
     [11, 6],
@@ -744,7 +744,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
             type: 'mapComment',
             id: wmeSdk.DataModel.MapComments.addMapComment({
               geometry,
-            }),
+            }).toString(),
           }
         }, getFeatureGeometryOptions('mapComment')),
         createNewFeatureButton('venue', (geometry) => {
@@ -753,7 +753,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
             id: wmeSdk.DataModel.Venues.addVenue({
               category: 'OTHER',
               geometry,
-            }),
+            }).toString(),
           }
         }, getFeatureGeometryOptions('venue')),
         createNewFeatureButton('permanentHazard.schoolZone', (geometry) => {
@@ -1028,7 +1028,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
     const addFeatureEditorOpenedHandler = (featureType, handler) => {
       wmeSdk.Events.on({
-        eventName: "wme-feature-editor-rendered",
+        eventName: "wme-feature-editor-opened",
         eventHandler: (e) => {
           if (e.featureType !== featureType) return;
           handler(e);
