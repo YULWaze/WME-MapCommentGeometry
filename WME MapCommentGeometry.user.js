@@ -11,7 +11,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2025.12.5
+// @version 		2026.04.20
 // ==/UserScript==
 
 /* global W */
