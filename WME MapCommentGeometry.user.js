@@ -6,12 +6,12 @@
 // @exclude			*://*.waze.com/user/editor*
 // @grant 			none
 // @require			https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require			https://cdn.jsdelivr.net/gh/TheEditorX/wme-sdk-plus@1.3/wme-sdk-plus.js
+// @require			https://cdn.jsdelivr.net/gh/TheEditorX/wme-sdk-plus@latest/wme-sdk-plus.js
 // @require			https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2026.04.20
+// @version 		2026.07.31
 // ==/UserScript==
 
 /* global W */
@@ -53,7 +53,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 (async function () {
   await SDK_INITIALIZED;
-  const UPDATE_NOTES = "Fixed polygon geometry for school zones and places to remove holes (requested by Waze HQ for tile build compatibility)";
+  const UPDATE_NOTES = "Added auto-detection of the school name and a default speed limit of 20 when creating school zones. Added a 'Create schoolzone using drawline' button to create a school zone from a drawn line instead of the whole selected segment.";
   const SCRIPT_NAME = GM_info.script.name;
   const SCRIPT_VERSION = GM_info.script.version;
   const idTitle = 0;
@@ -563,6 +563,70 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
     }
   }
 
+  /**
+   * Finds the name of the school venue closest to the center of the given geometry.
+   * Used to automatically name newly created school zones.
+   * @param geometry The GeoJSON geometry (Polygon) of the school zone being created.
+   * @returns The nearest school's name, or an empty string if none is found.
+   */
+  function getNearestSchoolName(geometry) {
+    try {
+      const allVenues = wmeSdk.DataModel.Venues.getAll();
+      const schools = allVenues.filter((venue) =>
+        venue.categories &&
+        venue.categories.some((category) => category === 'SCHOOL' || category === 'COLLEGE_UNIVERSITY')
+      );
+
+      if (schools.length === 0 || !geometry?.coordinates?.[0]) return '';
+
+      const coords = geometry.coordinates[0];
+      const sum = coords.slice(0, -1).reduce(
+        (acc, [lon, lat]) => ({ lon: acc.lon + lon, lat: acc.lat + lat }),
+        { lon: 0, lat: 0 }
+      );
+      const count = coords.length - 1;
+      const centerLon = sum.lon / count;
+      const centerLat = sum.lat / count;
+
+      let nearestSchool = null;
+      let minDistance = Infinity;
+
+      schools.forEach((school) => {
+        let schoolLon, schoolLat;
+        if (school.geometry.type === 'Point') {
+          [schoolLon, schoolLat] = school.geometry.coordinates;
+        } else if (school.geometry.type === 'Polygon' && school.geometry.coordinates[0]) {
+          const sc = school.geometry.coordinates[0];
+          const scSum = sc.slice(0, -1).reduce(
+            (acc, [lon, lat]) => ({ lon: acc.lon + lon, lat: acc.lat + lat }),
+            { lon: 0, lat: 0 }
+          );
+          const scCount = sc.length - 1;
+          schoolLon = scSum.lon / scCount;
+          schoolLat = scSum.lat / scCount;
+        }
+
+        if (schoolLon !== undefined && schoolLat !== undefined) {
+          const distance = Math.sqrt(Math.pow(schoolLon - centerLon, 2) + Math.pow(schoolLat - centerLat, 2));
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestSchool = school;
+          }
+        }
+      });
+
+      if (nearestSchool?.name?.trim()) {
+        const schoolName = nearestSchool.name.trim();
+        console.log(`Found nearby school: ${schoolName}`);
+        return schoolName;
+      }
+    } catch (error) {
+      console.warn('Error finding nearby school:', error);
+    }
+
+    return '';
+  }
+
   function WMEMapCommentGeometry_init() {
     try {
       let updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(
@@ -737,6 +801,44 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
           snackbar.remove();
         }
       });
+      // Create a school zone by drawing a line on the map, instead of using the whole selected segment
+      const createSchoolZoneFromLineButton = $(
+        '<wz-button style="--space-button-text: 100%;" size="sm" color="text">Create schoolzone using drawline</wz-button>'
+      );
+      createSchoolZoneFromLineButton.click((e) => e.target.blur()); // Prevent focus on the button
+      createSchoolZoneFromLineButton.click(async () => {
+        // Capture the width before drawing, while the segment is still selected
+        const width = getUserSelectedWidth() || DefaultCommentWidth;
+
+        let drawnLine;
+        try {
+          drawnLine = await wmeSdk.Map.drawLine();
+        } catch (e) {
+          return; // User cancelled the drawing
+        }
+        const lineGeometry = drawnLine.geometry || drawnLine;
+
+        // Buffer the drawn line into a polygon covering the road
+        const geometry = getGeometryForLineString(lineGeometry, {
+          width,
+          strictBoundary: false,
+          removeHoles: true,
+        });
+
+        const schoolZoneId = wmeSdk.DataModel.PermanentHazards.addSchoolZone({
+          geometry,
+          name: getNearestSchoolName(geometry),
+          speedLimit: 20,
+        });
+
+        wmeSdk.Editing.setSelection({
+          selection: {
+            ids: [schoolZoneId],
+            objectType: 'permanentHazard',
+          },
+        });
+      });
+
       mapNoteWidthControls.append(
         $useBtn,
         createNewFeatureButton('mapComment', (geometry) => {
@@ -761,9 +863,12 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
             type: 'permanentHazard',
             id: wmeSdk.DataModel.PermanentHazards.addSchoolZone({
               geometry,
+              name: getNearestSchoolName(geometry),
+              speedLimit: 20,
             }),
           }
         }, getFeatureGeometryOptions('permanentHazard.schoolZone')),
+        createSchoolZoneFromLineButton,
       );
 
       rootContainer.append(mapNoteWidthControls);
