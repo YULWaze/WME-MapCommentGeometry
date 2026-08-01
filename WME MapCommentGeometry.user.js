@@ -11,7 +11,7 @@
 // @downloadURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @updateURL		https://raw.githubusercontent.com/YULWaze/WME-MapCommentGeometry/main/WME%20MapCommentGeometry.user.js
 // @supportURL		https://github.com/YULWaze/WME-MapCommentGeometry/issues/new/choose
-// @version 		2026.07.31
+// @version 		2026.08.01
 // ==/UserScript==
 
 /* global W */
@@ -53,7 +53,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
 
 (async function () {
   await SDK_INITIALIZED;
-  const UPDATE_NOTES = "Added auto-detection of the school name and a default speed limit of 20 when creating school zones. Added a 'Create schoolzone using drawline' button to create a school zone from a drawn line instead of the whole selected segment.";
+  const UPDATE_NOTES = "Added auto-detection of the school name creating school zones. Added a 'Create schoolzone using drawline' button to create a school zone from a drawn line instead of the whole selected segment.";
   const SCRIPT_NAME = GM_info.script.name;
   const SCRIPT_VERSION = GM_info.script.version;
   const idTitle = 0;
@@ -828,7 +828,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
         const schoolZoneId = wmeSdk.DataModel.PermanentHazards.addSchoolZone({
           geometry,
           name: getNearestSchoolName(geometry),
-          speedLimit: 20,
+          //speedLimit: 20,
         });
 
         wmeSdk.Editing.setSelection({
@@ -864,7 +864,7 @@ See simplify.js by Volodymyr Agafonkin (https://github.com/mourner/simplify-js)
             id: wmeSdk.DataModel.PermanentHazards.addSchoolZone({
               geometry,
               name: getNearestSchoolName(geometry),
-              speedLimit: 20,
+              //speedLimit: 20,
             }),
           }
         }, getFeatureGeometryOptions('permanentHazard.schoolZone')),
